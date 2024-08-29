@@ -1,0 +1,5 @@
+# generated from catkin/cmake/template/order_packages.context.py.in
+source_root_dir = '/home/zt/multi-robot-planner/src'
+whitelisted_packages = ''.split(';') if '' != '' else []
+blacklisted_packages = ''.split(';') if '' != '' else []
+underlay_workspaces = '/home/zt/multi-robot-planner/devel;/home/zt/Minimum-Snap_ws/devel;/home/zt/multi-robot/devel;/home/zt/cpp_for_ros/devel;/home/zt/catkin_ws/devel;/home/zt/Pathplan_learning_ws/devel;/home/zt/gazebo_sim_ws/devel;/home/zt/turtlebot3_sim_ws/devel;/home/zt/Turtlebot3_ws/devel;/home/zt/learning_ws/devel;/home/zt/dashgo_ws/devel;/home/zt/eairos_ws/devel;/opt/ros/melodic'.split(';') if '/home/zt/multi-robot-planner/devel;/home/zt/Minimum-Snap_ws/devel;/home/zt/multi-robot/devel;/home/zt/cpp_for_ros/devel;/home/zt/catkin_ws/devel;/home/zt/Pathplan_learning_ws/devel;/home/zt/gazebo_sim_ws/devel;/home/zt/turtlebot3_sim_ws/devel;/home/zt/Turtlebot3_ws/devel;/home/zt/learning_ws/devel;/home/zt/dashgo_ws/devel;/home/zt/eairos_ws/devel;/opt/ros/melodic' != '' else []
