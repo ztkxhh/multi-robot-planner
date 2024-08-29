@@ -1,0 +1,31 @@
+<launch>
+
+
+
+<arg name="robot_radius" default="0.1"/>
+<param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
+
+<arg name="robot_count" default="10"/>
+<param name="robot_count" type= "int" value="$(arg robot_count)"/>
+
+
+    <!-- start map-server and publish user map -->
+    <arg name="map" default="sim-map.yaml" />
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find multi-robot-planner)/mapfile/$(arg map)" required="true"/>
+
+    <!-- get the inflated map and publish user map -->
+    <node name="map_inflator"   pkg="multi-robot-planner" type="Map_Inflation">
+    </node>
+
+    <!-- generate the start points and goals for robots
+    <node name="robot_path_planner"   pkg="multi-robot-planer" type="path_planner" output="screen">
+    </node> -->
+
+    <node name="astar_path_planning"   pkg="multi-robot-planner" type="Path_Planner" output="screen">
+    </node>
+
+    <!-- Open Rviz to visualize-->
+    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim.rviz" />
+
+
+</launch>
