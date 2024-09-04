@@ -11,10 +11,16 @@
 #include <queue>
 #include <utility>
 #include <chrono>
-#include "Gen_Starts_Goals.h"
+#include "mosek.h"
 #include <memory>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include "gurobi_c++.h"
+
+
+#include "Gen_Starts_Goals.h"
+#include "bezier_base.h"
+
 struct Node {
     int x, y;
     int g, h;

@@ -124,9 +124,25 @@ catkin_package(
 
 
 
+#下面引入FindGUROBI.cmake文件  Gurobi
+include(./FindGUROBI.cmake)
+include_directories(${GUROBI_INCLUDE_DIRS})
+
+
+
+
+
+
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
+
+#Mosek设置头文件路径
+include_directories("/home/zt/mosektoolslinux64x86/mosek/10.2/tools/platform/linux64x86/h")
+#Mosek设置库文件路径
+link_directories("/home/zt/mosektoolslinux64x86/mosek/10.2/tools/platform/linux64x86/bin")
 
 
 
@@ -177,8 +193,9 @@ target_link_libraries(Map_Inflation ${catkin_LIBRARIES})
 add_executable(
   Path_Planner 
 src/Path_Planner.cpp 
+src/bezier_base.cpp 
 src/Gen_Starts_Goals.cpp)
-target_link_libraries(Path_Planner ${catkin_LIBRARIES})
+target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES})
 
 
 

@@ -570,6 +570,18 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
 }
 
 
+// int Path_Planner::MultiRobotTraGen(
+//     const std::vector<std::vector> &corridors,
+//     const MatrixXd &MQM_jerk,
+//     const MatrixXd &MQM_length,
+//     const  std::vector<std::pair<int, int>> &start_positions,
+//     const std::vector<std::pair<int, int>> &goal_positions,
+//     const double minimize_order,
+//     const double min_thres
+// )
+
+
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "path_planner");
@@ -583,6 +595,11 @@ int main(int argc, char **argv)
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
 
 
+
+    double minimum_order;
+    int bezier_order;
+    nh.param("/path_planning/minimum_order",     minimum_order,  3.0); // 最小阶数
+    nh.param("/path_planning/bezier_order",     bezier_order,  5); // 最小阶数
 
     ros::Rate rate(10);
     while (ros::ok() && (!path_planner->mapReceived() || !path_planner->doubleMapReceived()))
@@ -615,11 +632,66 @@ int main(int argc, char **argv)
         // }
     }
 
+    
+
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
 
     ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
+
+
+
+
+    int _poly_order_min = 3;
+    int _poly_order_max = 10;
+    Bernstein _bernstein;
+    if(_bernstein.setParam(_poly_order_min, _poly_order_max, minimum_order) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
+    MatrixXd Q_jerk = MQM[bezier_order];
+
+    Bernstein _bernstein2;
+    if(_bernstein2.setParam(_poly_order_min, _poly_order_max, 1.0) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
+    MatrixXd Q_length = MQM2[bezier_order];
+
+    //显示Q_jerk
+    ROS_INFO("Q_jerk:");
+    for (int j = 0; j < Q_jerk.rows(); j++)
+    {
+        for (int k = 0; k < Q_jerk.cols(); k++)
+        {
+            ROS_INFO("Q_jerk(%d, %d): %f", j, k, Q_jerk(j, k));
+        }
+    }
+
+    //显示Q_length
+    ROS_INFO("Q_length:");
+    for (int j = 0; j < Q_length.rows(); j++)
+    {
+        for (int k = 0; k < Q_length.cols(); k++)
+        {
+            ROS_INFO("Q_length(%d, %d): %f", j, k, Q_length(j, k));
+        }
+    }
+
+    // vector<MatrixXd> M    =    _bernstein.getM();
+    // vector<MatrixXd> FM   =    _bernstein.getFM();
+
+
+
+
+
+
+
+
+
 
 
     // 选择一个机器人，比如第一个机器人，发布其路径可视化
