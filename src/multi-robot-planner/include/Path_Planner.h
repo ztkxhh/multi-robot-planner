@@ -46,7 +46,7 @@ public:
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
     void doubleMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
-    void planPaths();
+    bool planPaths();
 
     const std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& getCorridors(size_t robot_index) const;
     const std::vector<std::pair<int, int>>& getStartPositions() const;

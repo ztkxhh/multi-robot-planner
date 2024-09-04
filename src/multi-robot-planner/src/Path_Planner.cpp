@@ -44,12 +44,14 @@ void Path_Planner::doubleMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& ms
     double_map_received_ = true;
 }
 
-void Path_Planner::planPaths()
+bool Path_Planner::planPaths()
 {
+    bool flag = true;
     if (!map_received_ || !double_map_received_)
     {
         ROS_WARN("Maps not fully received, cannot plan paths.");
-        return;
+        flag = false;
+        return flag;
     }
 
     const auto &start_positions = planner_.getStartPositions();
@@ -82,6 +84,7 @@ void Path_Planner::planPaths()
         if (path.empty())
         {
             ROS_WARN("No path found for robot %lu. Skipping corridor generation and connectivity check.", i + 1);
+            flag = false;
             continue;
         }
 
@@ -92,6 +95,7 @@ void Path_Planner::planPaths()
             if (!areCorridorsConnected(corridors[k - 1].second, corridors[k].second))
             {
                 connected = false;
+                flag = false;
                 ROS_WARN("Path for Robot %lu is not connected between nodes %lu and %lu", i + 1, k, k + 1);
                 break;
             }
@@ -108,6 +112,7 @@ void Path_Planner::planPaths()
             {
                 if (!areCorridorsConnected(corridors[k - 1].second, corridors[k].second))
                 {
+                    flag = false;
                     ROS_WARN("Path for Robot %lu is not connected after simplify between nodes %lu and %lu", i + 1, k, k + 1);
                     break;
                 }
@@ -120,6 +125,7 @@ void Path_Planner::planPaths()
             {
                 if (!areCorridorsConnected(corridors[k - 1].second, corridors[k].second))
                 {
+                    flag = false;
                     ROS_WARN("Path for Robot %lu is not connected after remove between nodes %lu and %lu", i + 1, k, k + 1);
                     break;
                 }
@@ -132,6 +138,7 @@ void Path_Planner::planPaths()
             {
                 if (!areCorridorsConnected(corridors[k - 1].second, corridors[k].second))
                 {
+                    flag = false;
                     ROS_WARN("Path for Robot %lu is not connected after second simplify between nodes %lu and %lu", i + 1, k, k + 1);
                     break;
                 }
@@ -141,6 +148,7 @@ void Path_Planner::planPaths()
         }
         robot_corridors_[i] = corridors;
     }
+    return flag;
 }
 
 const std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>> &Path_Planner::getCorridors(size_t robot_index) const
@@ -189,11 +197,11 @@ std::vector<std::shared_ptr<Node>> Path_Planner::astar(const nav_msgs::Occupancy
     {
         if(map.data[start_y * map.info.width + start_x] != 0)
         {
-        ROS_WARN("Start  is on an obstacle.");
+        ROS_WARN("Start is on an obstacle.");
         }
         if(map.data[goal_y * map.info.width + goal_x] != 0)
         {
-        ROS_WARN("Goal  is on an obstacle.");
+        ROS_WARN("Goal is on an obstacle.");
         }
         return std::vector<std::shared_ptr<Node>>();
     }
@@ -608,31 +616,51 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    path_planner->planPaths();
-
-
-    const auto &start_positions = path_planner->getStartPositions();
-    const auto &goal_positions = path_planner->getGoalPositions();
-
-    for (size_t i = 0; i < start_positions.size(); ++i)
+    if (!path_planner->planPaths())
     {
-        // ROS_INFO("Robot %lu Start: (%d, %d), Goal: (%d, %d)", i + 1, start_positions[i].first, start_positions[i].second, goal_positions[i].first, goal_positions[i].second);
-        std::pair<int, int> start = path_planner->getStart(i);
-        std::pair<int, int> goal = path_planner->getGoal(i);
-        const auto &corridors = path_planner->getCorridors(i);
-
-        // // 这里可以添加对corridors的使用代码，例如发布到ROS话题或其他处理
-        // ROS_INFO("Robot %lu Start: (%d, %d), Goal: (%d, %d)", i + 1, start.first, start.second, goal.first, goal.second);
-        // for (const auto &corridor : corridors)
-        // {
-        //     ROS_INFO("Node (%d, %d): Corridor [%d, %d] -> [%d, %d]",
-        //              corridor.first->x, corridor.first->y, // node x, y
-        //              corridor.second[0],  corridor.second[1], // min_x, max_x
-        //              corridor.second[2], corridor.second[3]); // max_y, max_y
-        // }
+        ROS_ERROR("Failed to plan paths.");
+        return -1;
     }
 
-    
+
+
+    const std::vector<std::pair<int, int>> &start_positions = path_planner->getStartPositions();
+    const std::vector<std::pair<int, int>> &goal_positions = path_planner->getGoalPositions();
+
+
+    std::vector<std::vector< std::vector<int>>> allcorridors;
+    allcorridors.resize(start_positions.size());
+    for (size_t i = 0; i < start_positions.size(); ++i)
+    {
+        const auto &corridors = path_planner->getCorridors(i);
+        allcorridors[i].resize(corridors.size());
+        for (size_t j = 0; j < corridors.size(); ++j)
+        {
+            allcorridors[i][j] = corridors[j].second;
+        }
+    }
+
+
+
+    // for (size_t i = 0; i < start_positions.size(); ++i)
+    // {
+    //     // ROS_INFO("Robot %lu Start: (%d, %d), Goal: (%d, %d)", i + 1, start_positions[i].first, start_positions[i].second, goal_positions[i].first, goal_positions[i].second);
+    //     std::pair<int, int> start = path_planner->getStart(i);
+    //     std::pair<int, int> goal = path_planner->getGoal(i);
+    //     const auto &corridors = path_planner->getCorridors(i);
+
+    //     // // 这里可以添加对corridors的使用代码，例如发布到ROS话题或其他处理
+    //     // ROS_INFO("Robot %lu Start: (%d, %d), Goal: (%d, %d)", i + 1, start.first, start.second, goal.first, goal.second);
+    //     // for (const auto &corridor : corridors)
+    //     // {
+    //     //     ROS_INFO("Node (%d, %d): Corridor [%d, %d] -> [%d, %d]",
+    //     //              corridor.first->x, corridor.first->y, // node x, y
+    //     //              corridor.second[0],  corridor.second[1], // min_x, max_x
+    //     //              corridor.second[2], corridor.second[3]); // max_y, max_y
+    //     // }
+    // }
+
+
 
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -661,25 +689,25 @@ int main(int argc, char **argv)
     vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
     MatrixXd Q_length = MQM2[bezier_order];
 
-    //显示Q_jerk
-    ROS_INFO("Q_jerk:");
-    for (int j = 0; j < Q_jerk.rows(); j++)
-    {
-        for (int k = 0; k < Q_jerk.cols(); k++)
-        {
-            ROS_INFO("Q_jerk(%d, %d): %f", j, k, Q_jerk(j, k));
-        }
-    }
+    // //显示Q_jerk
+    // ROS_INFO("Q_jerk:");
+    // for (int j = 0; j < Q_jerk.rows(); j++)
+    // {
+    //     for (int k = 0; k < Q_jerk.cols(); k++)
+    //     {
+    //         ROS_INFO("Q_jerk(%d, %d): %f", j, k, Q_jerk(j, k));
+    //     }
+    // }
 
-    //显示Q_length
-    ROS_INFO("Q_length:");
-    for (int j = 0; j < Q_length.rows(); j++)
-    {
-        for (int k = 0; k < Q_length.cols(); k++)
-        {
-            ROS_INFO("Q_length(%d, %d): %f", j, k, Q_length(j, k));
-        }
-    }
+    // //显示Q_length
+    // ROS_INFO("Q_length:");
+    // for (int j = 0; j < Q_length.rows(); j++)
+    // {
+    //     for (int k = 0; k < Q_length.cols(); k++)
+    //     {
+    //         ROS_INFO("Q_length(%d, %d): %f", j, k, Q_length(j, k));
+    //     }
+    // }
 
     // vector<MatrixXd> M    =    _bernstein.getM();
     // vector<MatrixXd> FM   =    _bernstein.getFM();
