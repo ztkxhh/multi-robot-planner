@@ -60,6 +60,18 @@ public:
 
     void publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub);
 
+    int MultiRobotTraGen(
+    const std::vector<std::vector< std::vector<int>>>  & corridors,
+    const MatrixXd & MQM_jerk,
+    const MatrixXd & MQM_length,
+    const  std::vector<std::pair<int, int>> & start_positions,
+    const std::vector<std::pair<int, int>> & goal_positions,
+    const double & minimize_order,
+    const int & curve_order,
+    const double & min_threshold);
+
+    std::vector<std::vector< std::vector<double>>> all_control_points;
+
 private:
     int manhattanDistance(int x1, int y1, int x2, int y2);
     std::vector<std::shared_ptr<Node>> astar(const nav_msgs::OccupancyGrid& map, int start_x, int start_y, int goal_x, int goal_y, int max_steps);

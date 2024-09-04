@@ -3,6 +3,7 @@
 /*采用两个膨胀地图分别进行路径规划和corridor生成*/
 /*添加rviz的显示*/
 #include "Path_Planner.h"
+using namespace std;
 
 Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
 {
@@ -578,15 +579,237 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
 }
 
 
-// int Path_Planner::MultiRobotTraGen(
-//     const std::vector<std::vector> &corridors,
-//     const MatrixXd &MQM_jerk,
-//     const MatrixXd &MQM_length,
-//     const  std::vector<std::pair<int, int>> &start_positions,
-//     const std::vector<std::pair<int, int>> &goal_positions,
-//     const double minimize_order,
-//     const double min_thres
-// )
+int Path_Planner::MultiRobotTraGen(
+    const std::vector<std::vector< std::vector<int>>>  & corridors, //每个corridor：std::vector<int>{min_x, max_x, min_y, max_y}
+    const MatrixXd & MQM_jerk,
+    const MatrixXd & MQM_length,
+    const  std::vector<std::pair<int, int>> & start_positions,
+    const std::vector<std::pair<int, int>> & goal_positions,
+    const double & minimize_order,
+    const int & curve_order,
+    const double & min_threshold)
+{
+
+    int n = corridors.size(); //机器人数量
+
+    vector<int> segments_nums(n);
+
+    int n_poly = curve_order + 1; //每段的控制点数量（6个）
+
+    for (int i = 0; i < n; i++)
+    {
+        segments_nums[i] = corridors[i].size(); //每个机器人的段数量
+    }
+
+    // 创建MOSEK环境和任务
+    MSKenv_t env;
+    MSKtask_t task;
+    MSKrescodee r = MSK_makeenv(&env, NULL);
+    r = MSK_maketask(env, 0, 0, &task);
+
+    // 添加优化器参数
+    MSK_putintparam(task, MSK_IPAR_NUM_THREADS, 1);
+    MSK_putdouparam(task, MSK_DPAR_CHECK_CONVEXITY_REL_TOL, 1e-2);
+    MSK_putdouparam(task, MSK_DPAR_INTPNT_TOL_DFEAS, 1e-4);
+    MSK_putdouparam(task, MSK_DPAR_INTPNT_TOL_PFEAS, 1e-4);
+    MSK_putdouparam(task, MSK_DPAR_INTPNT_TOL_INFEAS, 1e-4);
+
+    int total_cp_num = 0; //总的控制点数量
+    int total_con_num = 0; //总的约束数量
+
+    for (int i = 0; i < n; i++) {
+        int robot_cp_num = segments_nums[i] * n_poly * 2; // 每个机器人有 m_i 段，每段有 n_poly 控制点，每个控制点有 x 和 y 两个维度
+        total_cp_num += robot_cp_num;
+        total_con_num += (segments_nums[i] - 1) * 3 * 2; // 每段之间的位置、速度和加速度的连续性约束 (x和y)
+    }
+    total_con_num += n * 2 * 2; // 每个机器人的起始和终止位置约束
+    total_con_num += (n * (n - 1) / 2) * n_poly * 2; // 两两机器人间的控制点距离约束 (x和y)
+
+    r = MSK_appendvars(task, total_cp_num); // 添加变量
+    r = MSK_appendcons(task, total_con_num); // 添加约束
+
+    int var_idx = 0; // 变量索引
+    int con_idx = 0; // 约束索引
+
+    // 设置控制点变量的上下界
+    for (int i = 0; i < n; i++) {
+        const auto &robot_corridors = corridors[i];
+        for (int seg = 0; seg < segments_nums[i]; seg++) {
+            const auto &corridor = robot_corridors[seg];
+            for (int j = 0; j < n_poly; j++) {
+                // x 方向的控制点上下界
+                r = MSK_putvarbound(task, var_idx, MSK_BK_RA, corridor[0], corridor[1]);
+                var_idx++;
+                // y 方向的控制点上下界
+                r = MSK_putvarbound(task, var_idx, MSK_BK_RA, corridor[2], corridor[3]);
+                var_idx++;
+            }
+        }
+    }
+
+
+
+    // 添加起始位置和终止位置约束
+    for (int i = 0; i < n; i++) {
+        // 计算当前机器人的偏移量（即它的变量在整个优化变量中的起始位置）
+        int robot_offset = 0;
+        for (int k = 0; k < i; k++) {
+            robot_offset += segments_nums[k] * n_poly * 2; // 计算当前机器人起始变量索引的偏移量
+        }
+
+        // 起始位置约束：设置第一个段的第一个控制点
+        int start_idx_x = robot_offset;  // 第一个控制点的x坐标索引
+        int start_idx_y = robot_offset + 1;  // 第一个控制点的y坐标索引
+
+        MSKint32t asub_start[1];
+        double aval_start[1] = {1.0};  // 控制点的位置系数为1
+
+        // 对x方向
+        asub_start[0] = start_idx_x;  // 起始控制点x的变量索引
+        r = MSK_putarow(task, con_idx, 1, asub_start, aval_start);  // 设置约束行
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+        r = MSK_putconbound(task, con_idx++, MSK_BK_FX, start_positions[i].first, start_positions[i].first);  // 设置位置约束的范围
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+
+        // 对y方向
+        asub_start[0] = start_idx_y;  // 起始控制点y的变量索引
+        r = MSK_putarow(task, con_idx, 1, asub_start, aval_start);  // 设置约束行
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+        r = MSK_putconbound(task, con_idx++, MSK_BK_FX, start_positions[i].second, start_positions[i].second);  // 设置位置约束的范围
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+
+        // 终止位置约束：设置最后一个段的最后一个控制点
+        int last_seg_start_idx = robot_offset + (segments_nums[i] - 1) * n_poly * 2;  // 计算最后一个段的起始变量索引
+        int end_idx_x = last_seg_start_idx + (n_poly - 1) * 2;  // 最后一个控制点的x坐标索引
+        int end_idx_y = last_seg_start_idx + (n_poly - 1) * 2 + 1;  // 最后一个控制点的y坐标索引
+
+        MSKint32t asub_end[1];
+        double aval_end[1] = {1.0};  // 控制点的位置系数为1
+
+        // 对x方向
+        asub_end[0] = end_idx_x;  // 终止控制点x的变量索引
+        r = MSK_putarow(task, con_idx, 1, asub_end, aval_end);  // 设置约束行
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+        r = MSK_putconbound(task, con_idx++, MSK_BK_FX, goal_positions[i].first, goal_positions[i].first);  // 设置位置约束的范围
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+
+        // 对y方向
+        asub_end[0] = end_idx_y;  // 终止控制点y的变量索引
+        r = MSK_putarow(task, con_idx, 1, asub_end, aval_end);  // 设置约束行
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+        r = MSK_putconbound(task, con_idx++, MSK_BK_FX, goal_positions[i].second, goal_positions[i].second);  // 设置位置约束的范围
+        if (r != MSK_RES_OK) return r;  // 检查返回状态
+    }
+
+
+    // 添加轨迹段间的连续性约束
+    for (int i = 0; i < n; i++) { // 遍历每个机器人
+        int offset = 0; // 记录当前机器人的控制点起始索引
+        for (int j = 0; j < i; j++) { 
+            offset += segments_nums[j] * n_poly * 2; // 计算偏移量
+        }
+
+        for (int seg = 0; seg < segments_nums[i] - 1; seg++) { // 遍历每个段
+            int base_idx_current = offset + seg * n_poly * 2; // 当前段的起始索引
+            int base_idx_next = offset + (seg + 1) * n_poly * 2; // 下一段的起始索引
+
+            for (int dim = 0; dim < 2; dim++) { // x 和 y 方向
+                // 位置连续性：P_6^i = P_1^{i+1}
+                {
+                    MSKint32t asub[2] = {base_idx_current + 5 * 2 + dim, base_idx_next + dim}; // 控制点索引
+                    double aval[2] = {1.0, -1.0}; // 系数
+                    r = MSK_putarow(task, con_idx, 2, asub, aval); // 设置行
+                    r = MSK_putconbound(task, con_idx++, MSK_BK_FX, 0.0, 0.0); // 约束为等式
+                }
+
+                // 速度连续性：(P_6^i - P_5^i) * 5 = (P_2^{i+1} - P_1^{i+1}) * 5
+                {
+                    MSKint32t asub[4] = {base_idx_current + 5 * 2 + dim, base_idx_current + 4 * 2 + dim, 
+                                        base_idx_next + 1 * 2 + dim, base_idx_next + 0 * 2 + dim}; // 控制点索引
+                    double aval[4] = {1.0, -1.0, -1.0, 1.0}; // 系数，注意速度的系数为5，但因所有段的order相同，所以系数相同
+                    r = MSK_putarow(task, con_idx, 4, asub, aval); // 设置行
+                    r = MSK_putconbound(task, con_idx++, MSK_BK_FX, 0.0, 0.0); // 约束为等式
+                }
+
+                // 加速度连续性：(P_6^i - 2P_5^i + P_4^i) * 20 = (P_3^{i+1} - 2P_2^{i+1} + P_1^{i+1}) * 20
+                {
+                    MSKint32t asub[6] = {base_idx_current + 5 * 2 + dim, base_idx_current + 4 * 2 + dim, base_idx_current + 3 * 2 + dim,
+                                        base_idx_next + 2 * 2 + dim, base_idx_next + 1 * 2 + dim, base_idx_next + 0 * 2 + dim}; // 控制点索引
+                    double aval[6] = {1.0, -2.0, 1.0, -1.0, 2.0, -1.0}; // 系数，注意加速度的系数为20，但因所有段的order相同，所以系数相同
+                    r = MSK_putarow(task, con_idx, 6, asub, aval); // 设置行
+                    r = MSK_putconbound(task, con_idx++, MSK_BK_FX, 0.0, 0.0); // 约束为等式
+                }
+            }
+        }
+    }
+
+
+    // 设置优化目标：最小化jerk和路径长度
+    int total_segments = 0;
+    for (int i = 0; i < n; i++) {
+        total_segments += segments_nums[i];  // 计算总段数
+    }
+
+    // 二次目标函数的最大非零元素数（假设最坏情况下每个变量都有贡献）
+    int num_q = total_segments * n_poly * (n_poly + 1) / 2 * 2;  // 每段6个控制点，两两之间的组合
+
+    MSKint32t *qsubi = new MSKint32t[num_q];
+    MSKint32t *qsubj = new MSKint32t[num_q];
+    double *qval = new double[num_q];
+    int idx = 0;
+
+    for (int i = 0; i < n; i++) {  // 遍历每个机器人
+        int offset = 0;
+        for (int j = 0; j < i; j++) { 
+            offset += segments_nums[j] * n_poly * 2;  // 索引偏移量，取决于之前机器人的所有控制点数量
+        }
+        
+        for (int seg = 0; seg < segments_nums[i]; seg++) {  // 遍历每个段
+            int base_idx = offset + seg * n_poly * 2;  // 当前段的控制点起始索引
+
+            for (int p = 0; p < n_poly; p++) {  // 遍历当前段的所有控制点
+                for (int q = 0; q <= p; q++) {  // 遍历对称矩阵的下三角
+                    for (int dim = 0; dim < 2; dim++) {  // x 和 y 方向
+                        int var_p = base_idx + p * 2 + dim;  // 变量 p 的索引
+                        int var_q = base_idx + q * 2 + dim;  // 变量 q 的索引
+
+                        qsubi[idx] = var_p;
+                        qsubj[idx] = var_q;
+
+                        // 目标函数的值是两个矩阵的线性组合：jerk矩阵和长度矩阵
+                        qval[idx] = MQM_jerk(p, q) + MQM_length(p, q);
+                        idx++;
+                    }
+                }
+            }
+        }
+    }
+
+    // 将二次型目标函数添加到任务中
+    r = MSK_putqobj(task, idx, qsubi, qsubj, qval);
+    r = MSK_putobjsense(task, MSK_OBJECTIVE_SENSE_MINIMIZE);
+
+    // 释放内存
+    delete[] qsubi;
+    delete[] qsubj;
+    delete[] qval;
+
+
+    // 获取结果并返回
+    if (r == MSK_RES_OK) {
+        double *xx = new double[total_cp_num];
+        MSK_getxx(task, MSK_SOL_ITR, xx);
+        // 解析结果
+        delete[] xx;
+        MSK_deletetask(&task);
+        MSK_deleteenv(&env);
+        return 1;  // 成功
+    }
+
+    MSK_deletetask(&task);
+    MSK_deleteenv(&env);
+    return -1;  // 失败
+}
 
 
 
@@ -663,10 +886,6 @@ int main(int argc, char **argv)
 
 
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = end_time - start_time;
-
-    ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
 
 
 
@@ -712,11 +931,15 @@ int main(int argc, char **argv)
     // vector<MatrixXd> M    =    _bernstein.getM();
     // vector<MatrixXd> FM   =    _bernstein.getFM();
 
+    int okk = path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, start_positions, goal_positions, minimum_order, bezier_order, 0.1);
+    ROS_INFO("okk: %d", okk);
 
 
 
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_time = end_time - start_time;
 
-
+    ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
 
 
 
