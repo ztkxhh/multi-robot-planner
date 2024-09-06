@@ -64,13 +64,15 @@ public:
     const std::vector<std::vector< std::vector<int>>>  & corridors,
     const MatrixXd & MQM_jerk,
     const MatrixXd & MQM_length,
+    double w_1, double w_2,
     const  std::vector<std::pair<int, int>> & start_positions,
     const std::vector<std::pair<int, int>> & goal_positions,
     const double & minimize_order,
     const int & curve_order,
     const double & min_threshold);
 
-    std::vector<std::vector< std::vector<double>>> all_control_points;
+    std::vector<std::vector< std::vector<std::pair<double,double>>>> all_control_points;
+    std::vector<std::vector< std::vector<std::pair<double,double>>>> getControlPoints(){ return all_control_points; }
 
 private:
     int manhattanDistance(int x1, int y1, int x2, int y2);

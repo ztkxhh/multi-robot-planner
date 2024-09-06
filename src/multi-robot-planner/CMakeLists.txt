@@ -146,6 +146,9 @@ link_directories("/home/zt/mosektoolslinux64x86/mosek/10.2/tools/platform/linux6
 
 
 
+
+
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
@@ -195,7 +198,9 @@ add_executable(
 src/Path_Planner.cpp 
 src/bezier_base.cpp 
 src/Gen_Starts_Goals.cpp)
-target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES})
+
+target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} mosek64)
+# target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES}  mosek64)
 
 
 
