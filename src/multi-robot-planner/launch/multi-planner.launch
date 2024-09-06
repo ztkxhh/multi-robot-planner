@@ -14,7 +14,7 @@
 
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
 
-    <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
+    <arg name="w_2"  default="5.0"/>     <!-- weight of length  -->
 
 
 

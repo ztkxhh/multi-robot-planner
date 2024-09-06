@@ -11,7 +11,6 @@
 #include <queue>
 #include <utility>
 #include <chrono>
-#include "mosek.h"
 #include <memory>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -67,7 +66,6 @@ public:
     double w_1, double w_2,
     const  std::vector<std::pair<int, int>> & start_positions,
     const std::vector<std::pair<int, int>> & goal_positions,
-    const double & minimize_order,
     const int & curve_order,
     const double & min_threshold);
 
