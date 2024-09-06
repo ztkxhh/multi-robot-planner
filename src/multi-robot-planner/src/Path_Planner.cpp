@@ -5,6 +5,8 @@
 #include "Path_Planner.h"
 using namespace std;
 
+
+
 Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
 {
     double robot_radius;
@@ -587,8 +589,7 @@ int Path_Planner::MultiRobotTraGen(
     double w_1, double w_2,
     const  std::vector<std::pair<int, int>> & start_positions,
     const std::vector<std::pair<int, int>> & goal_positions,
-    const int & curve_order,
-    const double & min_threshold)
+    const int & curve_order)
 {
 
     int n = corridors.size(); //机器人数量
@@ -607,7 +608,7 @@ int Path_Planner::MultiRobotTraGen(
     GRBEnv env = GRBEnv(true);
 
     //禁止打印输出信息
-    env.set("OutputFlag", "0");
+    // env.set("OutputFlag", "0");
 
     env.start();
 
@@ -727,9 +728,13 @@ int Path_Planner::MultiRobotTraGen(
         }
     }
 
-    double min_threshold2 = min_threshold * min_threshold;  // 距离的平方
+
+
+
+
     // 添加机器人之间的距离约束(只限于首段)
     // 对于每一对机器人，计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
+    double min_threshold =  inflation_radius_ * inflation_radius_;  // 距离的平方
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             int offset_i = 0;
@@ -745,16 +750,17 @@ int Path_Planner::MultiRobotTraGen(
             int base_idx_i = offset_i;
             int base_idx_j = offset_j;
 
-            for (int dim = 0; dim < 2; dim++) {
-                for (int p = 0; p < n_poly; p++) {
-                    int var_idx_i = base_idx_i + p * 2 + dim;
-                    int var_idx_j = base_idx_j + p * 2 + dim;
 
-                    model.addQConstr(vars[var_idx_i] - vars[var_idx_j] >= min_threshold2);
+            for (int p = 0; p < n_poly; p++) {
+                    int var_idx_i = base_idx_i + p * 2 ;
+                    int var_idx_j = base_idx_j + p * 2 ;
+
+                    model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
                 }
-            }
         }
     }
+
+
 
 
     // Optimize model
@@ -764,7 +770,7 @@ int Path_Planner::MultiRobotTraGen(
     if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
         // Get the optimal value of the objective function
         double obj_val = model.get(GRB_DoubleAttr_ObjVal);
-        ROS_INFO("Optimal objective: %.4f", obj_val);
+        // ROS_INFO("Optimal objective: %.4f", obj_val);
 
         // Get the optimal value of the decision variables
         all_control_points.resize(n);
@@ -874,36 +880,29 @@ int main(int argc, char **argv)
 
     double w_1;
     double w_2;
-    double robot_radius;
     nh.param("/path_planning/w_1",     w_1,  1.0); // 平滑项系数
     nh.param("/path_planning/w_2",     w_2,  1.0); // 长度项系数
-    nh.param("robot_radius",   robot_radius,  0.2); // 机器人半径
-    ROS_INFO("w_1: %.2f, w_2: %.2f", w_1, w_2);
-    ROS_INFO("robot_radius: %.2f", robot_radius);
 
 
-    // int okk = path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, minimum_order, bezier_order, 0.1);
-    // ROS_INFO("okk: %d", okk);
-
-    if (path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order, 2.0 * robot_radius) ==1)
+    if (path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) ==1)
     {
         ROS_INFO("Success to optimize the trajectory.");
         std::vector<std::vector< std::vector<std::pair<double,double>>>> allcps = path_planner->getControlPoints();
 
 
-        // // 显示优化得到的控制点
-        for (size_t i = 0; i < allcps.size(); ++i)
-        {
-            ROS_INFO("Robot %lu", i + 1);
-            for (size_t j = 0; j < allcps[i].size(); ++j)
-            {
-                ROS_INFO("Segment %lu", j + 1);
-                for (size_t k = 0; k < allcps[i][j].size(); ++k)
-                {
-                    ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, allcps[i][j][k].first, allcps[i][j][k].second);
-                }
-            }
-        }
+        // // // 显示优化得到的控制点
+        // for (size_t i = 0; i < allcps.size(); ++i)
+        // {
+        //     ROS_INFO("Robot %lu", i + 1);
+        //     for (size_t j = 0; j < allcps[i].size(); ++j)
+        //     {
+        //         ROS_INFO("Segment %lu", j + 1);
+        //         for (size_t k = 0; k < allcps[i][j].size(); ++k)
+        //         {
+        //             ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, allcps[i][j][k].first, allcps[i][j][k].second);
+        //         }
+        //     }
+        // }
 
 
     }

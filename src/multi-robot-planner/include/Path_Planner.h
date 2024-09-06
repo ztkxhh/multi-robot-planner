@@ -66,8 +66,7 @@ public:
     double w_1, double w_2,
     const  std::vector<std::pair<int, int>> & start_positions,
     const std::vector<std::pair<int, int>> & goal_positions,
-    const int & curve_order,
-    const double & min_threshold);
+    const int & curve_order);
 
     std::vector<std::vector< std::vector<std::pair<double,double>>>> all_control_points;
     std::vector<std::vector< std::vector<std::pair<double,double>>>> getControlPoints(){ return all_control_points; }

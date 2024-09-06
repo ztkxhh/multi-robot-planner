@@ -37,7 +37,6 @@
         <param name="bezier_order"  value="$(arg bezier_order)"/>
         <param name="w_1"  value="$(arg w_1)"/>
         <param name="w_2"  value="$(arg w_2)"/>
-
     </node>
 
     <!-- Open Rviz to visualize-->
