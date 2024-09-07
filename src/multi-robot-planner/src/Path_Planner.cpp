@@ -882,7 +882,6 @@ int main(int argc, char **argv)
     nh.param("/path_planning/w_1",     w_1,  1.0); // 平滑项系数
     nh.param("/path_planning/w_2",     w_2,  1.0); // 长度项系数
 
-
     if (path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) ==1)
     {
         ROS_INFO("Success to optimize the path by getting control points.");
