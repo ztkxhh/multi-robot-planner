@@ -32,6 +32,8 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
         inflation_radius_ = static_cast<int>(std::ceil(robot_radius / resolution));
         // ROS_INFO("Calculated inflation_radius_: %d", inflation_radius_);
     }
+
+    GenerationControlPoints(nh);
 }
 
 void Path_Planner::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg)
@@ -800,7 +802,87 @@ int Path_Planner::MultiRobotTraGen(
 
 
 
+void Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
+{
+    if(planPaths())
+    {
+        ROS_INFO("Success to plan initial path-points.");
+        path_planned = true;
+    }
+    else
+    {
+        ROS_ERROR("Failed to  plan initial path-points.");
+        return;
+    }
+    
+    const std::vector<std::pair<int, int>> &start_positions = getStartPositions();
+    const std::vector<std::pair<int, int>> &goal_positions = getGoalPositions();
+    
+    std::vector<std::vector< std::vector<int>>> allcorridors;
+    allcorridors.resize(start_positions.size());
+    for (size_t i = 0; i < start_positions.size(); ++i)
+    {
+        const auto &corridors = getCorridors(i);
+        allcorridors[i].resize(corridors.size());
+        for (size_t j = 0; j < corridors.size(); ++j)
+        {
+            allcorridors[i][j] = corridors[j].second;
+        }
+    }
 
+    double minimum_order;
+    int bezier_order;
+    nh.param("/path_planning/minimum_order",     minimum_order,  3.0); // 最小阶数
+    nh.param("/path_planning/bezier_order",     bezier_order,  5); // 最小阶数
+    int _poly_order_min = 3;
+    int _poly_order_max = 10;
+    Bernstein _bernstein;
+    if(_bernstein.setParam(_poly_order_min, _poly_order_max, minimum_order) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
+    MatrixXd Q_jerk = MQM[bezier_order];
+
+    Bernstein _bernstein2;
+    if(_bernstein2.setParam(_poly_order_min, _poly_order_max, 1.0) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
+    MatrixXd Q_length = MQM2[bezier_order];
+
+    double w_1;
+    double w_2;
+    nh.param("/path_planning/w_1",     w_1,  1.0); // 平滑项系数
+    nh.param("/path_planning/w_2",     w_2,  1.0); // 长度项系数
+
+    if (MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) ==1)
+    {
+        ROS_INFO("Success to optimize the path by getting control points.");
+
+        // // // 显示优化得到的控制点
+        // for (size_t i = 0; i < all_control_points.size(); ++i)
+        // {
+        //     ROS_INFO("Robot %lu", i + 1);
+        //     for (size_t j = 0; j < all_control_points[i].size(); ++j)
+        //     {
+        //         ROS_INFO("Segment %lu", j + 1);
+        //         for (size_t k = 0; k < all_control_points[i][j].size(); ++k)
+        //         {
+        //             ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, all_control_points[i][j][k].first, all_control_points[i][j][k].second);
+        //         }
+        //     }
+        // }
+
+    }
+    else
+    {
+        ROS_ERROR("Failed to optimize the path.");
+    }
+
+
+}
 
 
 
@@ -821,11 +903,6 @@ int main(int argc, char **argv)
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
 
 
-    double minimum_order;
-    int bezier_order;
-    nh.param("/path_planning/minimum_order",     minimum_order,  3.0); // 最小阶数
-    nh.param("/path_planning/bezier_order",     bezier_order,  5); // 最小阶数
-
     ros::Rate rate(10);
     while (ros::ok() && (!path_planner->mapReceived() || !path_planner->doubleMapReceived()))
     {
@@ -833,80 +910,10 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    if (!path_planner->planPaths())
+    if (!path_planner->path_planned)
     {
-        ROS_ERROR("Failed to plan paths.");
+        ROS_ERROR("Failed to  plan initial path-points");
         return -1;
-    }
-
-
-    const std::vector<std::pair<int, int>> &start_positions = path_planner->getStartPositions();
-    const std::vector<std::pair<int, int>> &goal_positions = path_planner->getGoalPositions();
-
-
-    std::vector<std::vector< std::vector<int>>> allcorridors;
-    allcorridors.resize(start_positions.size());
-    for (size_t i = 0; i < start_positions.size(); ++i)
-    {
-        const auto &corridors = path_planner->getCorridors(i);
-        allcorridors[i].resize(corridors.size());
-        for (size_t j = 0; j < corridors.size(); ++j)
-        {
-            allcorridors[i][j] = corridors[j].second;
-        }
-    }
-
-
-    int _poly_order_min = 3;
-    int _poly_order_max = 10;
-    Bernstein _bernstein;
-    if(_bernstein.setParam(_poly_order_min, _poly_order_max, minimum_order) == -1) 
-    {
-        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
-    }
-    vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
-    MatrixXd Q_jerk = MQM[bezier_order];
-
-    Bernstein _bernstein2;
-    if(_bernstein2.setParam(_poly_order_min, _poly_order_max, 1.0) == -1) 
-    {
-        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
-    }
-    vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
-    MatrixXd Q_length = MQM2[bezier_order];
-
-
-
-    double w_1;
-    double w_2;
-    nh.param("/path_planning/w_1",     w_1,  1.0); // 平滑项系数
-    nh.param("/path_planning/w_2",     w_2,  1.0); // 长度项系数
-
-    if (path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) ==1)
-    {
-        ROS_INFO("Success to optimize the path by getting control points.");
-        std::vector<std::vector< std::vector<std::pair<double,double>>>> allcps = path_planner->getControlPoints();
-
-
-        // // // 显示优化得到的控制点
-        // for (size_t i = 0; i < allcps.size(); ++i)
-        // {
-        //     ROS_INFO("Robot %lu", i + 1);
-        //     for (size_t j = 0; j < allcps[i].size(); ++j)
-        //     {
-        //         ROS_INFO("Segment %lu", j + 1);
-        //         for (size_t k = 0; k < allcps[i][j].size(); ++k)
-        //         {
-        //             ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, allcps[i][j][k].first, allcps[i][j][k].second);
-        //         }
-        //     }
-        // }
-
-
-    }
-    else
-    {
-        ROS_ERROR("Failed to optimize the path.");
     }
 
 
@@ -914,7 +921,6 @@ int main(int argc, char **argv)
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
-
 
 
 
