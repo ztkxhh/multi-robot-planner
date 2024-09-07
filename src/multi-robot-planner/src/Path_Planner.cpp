@@ -608,26 +608,29 @@ int Path_Planner::MultiRobotTraGen(
     GRBEnv env = GRBEnv(true);
 
     //禁止打印输出信息
-    // env.set("OutputFlag", "0");
+    env.set("OutputFlag", "0");
 
     env.start();
 
     // Create an empty model
     GRBModel model = GRBModel(env);
 
+    // Set time limit and MIP gap
+    model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
+    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.01);
+    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.01);
+
+
+
     model.getEnv().set(GRB_IntParam_Threads, 12);
 
 
     int total_cp_num = 0; //总的控制点数量
-    int total_con_num = 0; //总的约束数量
 
     for (int i = 0; i < n; i++) {
         int robot_cp_num = segments_nums[i] * n_poly * 2; // 每个机器人有 m_i 段，每段有 n_poly 控制点，每个控制点有 x 和 y 两个维度
         total_cp_num += robot_cp_num;
-        total_con_num += (segments_nums[i] - 1) * 3 * 2; // 每段之间的位置、速度和加速度的连续性约束 (x和y)
     }
-    total_con_num += n * 2 * 2; // 每个机器人的起始和终止位置约束
-    total_con_num += (n * (n - 1) / 2) * n_poly * 2; // 两两机器人间的控制点距离约束 (x和y)
 
 
     // Create variables
@@ -660,7 +663,7 @@ int Path_Planner::MultiRobotTraGen(
         for (int j = 0; j < i; j++) { 
             offset += segments_nums[j] * n_poly * 2;  // 索引偏移量，取决于之前机器人的所有控制点数量
         }
-        
+
         for (int seg = 0; seg < segments_nums[i]; seg++) {  // 遍历每个段
             int base_idx = offset + seg * n_poly * 2;  // 当前段的控制点起始索引
 
@@ -732,33 +735,33 @@ int Path_Planner::MultiRobotTraGen(
 
 
 
-    // 添加机器人之间的距离约束(只限于首段)
-    // 对于每一对机器人，计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
-    double min_threshold =  inflation_radius_ * inflation_radius_;  // 距离的平方
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            int offset_i = 0;
-            for (int k = 0; k < i; k++) {
-                offset_i += segments_nums[k] * n_poly * 2;
-            }
+    // // 添加机器人之间的距离约束(只限于首段)
+    // // 对于每一对机器人，计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
+    // double min_threshold =  4.0 * inflation_radius_ * inflation_radius_;  // 距离的平方
+    // for (int i = 0; i < n; i++) {
+    //     for (int j = i + 1; j < n; j++) {
+    //         int offset_i = 0;
+    //         for (int k = 0; k < i; k++) {
+    //             offset_i += segments_nums[k] * n_poly * 2;
+    //         }
 
-            int offset_j = 0;
-            for (int k = 0; k < j; k++) {
-                offset_j += segments_nums[k] * n_poly * 2;
-            }
+    //         int offset_j = 0;
+    //         for (int k = 0; k < j; k++) {
+    //             offset_j += segments_nums[k] * n_poly * 2;
+    //         }
 
-            int base_idx_i = offset_i;
-            int base_idx_j = offset_j;
+    //         int base_idx_i = offset_i;
+    //         int base_idx_j = offset_j;
 
 
-            for (int p = 0; p < n_poly; p++) {
-                    int var_idx_i = base_idx_i + p * 2 ;
-                    int var_idx_j = base_idx_j + p * 2 ;
+    //         for (int p = 0; p < n_poly; p++) {
+    //                 int var_idx_i = base_idx_i + p * 2 ;
+    //                 int var_idx_j = base_idx_j + p * 2 ;
 
-                    model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
-                }
-        }
-    }
+    //                 model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
+    //             }
+    //     }
+    // }
 
 
 
@@ -818,7 +821,6 @@ int main(int argc, char **argv)
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
 
 
-
     double minimum_order;
     int bezier_order;
     nh.param("/path_planning/minimum_order",     minimum_order,  3.0); // 最小阶数
@@ -838,7 +840,6 @@ int main(int argc, char **argv)
     }
 
 
-
     const std::vector<std::pair<int, int>> &start_positions = path_planner->getStartPositions();
     const std::vector<std::pair<int, int>> &goal_positions = path_planner->getGoalPositions();
 
@@ -854,8 +855,6 @@ int main(int argc, char **argv)
             allcorridors[i][j] = corridors[j].second;
         }
     }
-
-
 
 
     int _poly_order_min = 3;
@@ -886,7 +885,7 @@ int main(int argc, char **argv)
 
     if (path_planner->MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) ==1)
     {
-        ROS_INFO("Success to optimize the trajectory.");
+        ROS_INFO("Success to optimize the path by getting control points.");
         std::vector<std::vector< std::vector<std::pair<double,double>>>> allcps = path_planner->getControlPoints();
 
 
@@ -908,7 +907,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        ROS_ERROR("Failed to optimize the trajectory.");
+        ROS_ERROR("Failed to optimize the path.");
     }
 
 
