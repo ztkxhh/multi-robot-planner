@@ -16,6 +16,11 @@
 
     <arg name="w_2"  default="5.0"/>     <!-- weight of length  -->
 
+    <arg name ="points_num" default = "100"> <!-- number of points evaluated for each segment-->
+
+    <arg name ="frequence" default = "50"> <!-- sampling frequence-->
+
+
 
 
 

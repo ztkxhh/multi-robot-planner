@@ -34,6 +34,7 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
     }
 
     GenerationControlPoints(nh);
+    GenerationCurves(nh);
 }
 
 void Path_Planner::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg)
@@ -802,17 +803,16 @@ int Path_Planner::MultiRobotTraGen(
 
 
 
-void Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
+int Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
 {
     if(planPaths())
     {
         ROS_INFO("Success to plan initial path-points.");
-        path_planned = true;
     }
     else
     {
         ROS_ERROR("Failed to  plan initial path-points.");
-        return;
+        return -1;
     }
     
     const std::vector<std::pair<int, int>> &start_positions = getStartPositions();
@@ -875,10 +875,13 @@ void Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
         //     }
         // }
 
+
+        return 1;
     }
     else
     {
-        ROS_ERROR("Failed to optimize the path.");
+        // ROS_ERROR("Failed to optimize the path by getting control points.");
+        return -1;
     }
 
 
@@ -886,7 +889,44 @@ void Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
 
 
 
+int Path_Planner::GenerationCurves(ros::NodeHandle &nh)
+{
+    if (!GenerationControlPoints(nh))
+    {
+        ROS_ERROR("Failed to optimize the path by getting control points.");
+        return -1;
+    }
 
+    int points_num;
+    nh.param("points_num", points_num, 100);
+
+    int frequence;
+    nh.param("frequence", frequence, 30);
+    double T_s = 1.0 / frequence;  // time for each segement(1/frequence)
+
+
+
+    // 生成曲线
+    for (size_t i = 0; i < all_control_points.size(); ++i)
+    {
+        for (size_t j = 0; j < all_control_points[i].size(); ++j)
+        {
+            std::vector<std::pair<double, double>> control_points;
+            for (size_t k = 0; k < all_control_points[i][j].size(); ++k)
+            {
+                control_points.emplace_back(all_control_points[i][j][k]);
+            }
+            
+            // // 生成曲线
+            // BezierCurve curve(control_points);
+            // curves_.emplace_back(curve);
+        }
+    }
+
+    // // 生成曲线成功
+    // curves_generated = true;
+    return 1;
+}
 
 
 
@@ -910,11 +950,11 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    if (!path_planner->path_planned)
-    {
-        ROS_ERROR("Failed to  plan initial path-points");
-        return -1;
-    }
+    // if (!path_planner->path_planned)
+    // {
+    //     ROS_ERROR("Failed to  plan initial path-points");
+    //     return -1;
+    // }
 
 
 

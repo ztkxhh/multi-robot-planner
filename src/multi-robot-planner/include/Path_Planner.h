@@ -19,6 +19,7 @@
 
 #include "Gen_Starts_Goals.h"
 #include "bezier_base.h"
+#include "Beziercurve.h"
 
 struct Node {
     int x, y;
@@ -68,12 +69,16 @@ public:
     const std::vector<std::pair<int, int>> & goal_positions,
     const int & curve_order);
 
-    void GenerationControlPoints(ros::NodeHandle &nh);
+    int GenerationControlPoints(ros::NodeHandle &nh);
 
     std::vector<std::vector< std::vector<std::pair<double,double>>>> all_control_points;
     std::vector<std::vector< std::vector<std::pair<double,double>>>> getControlPoints(){ return all_control_points; }
 
-    bool path_planned = false;
+    std::vector<std::vector<std::shared_ptr<Beziercurve>>>multiple_curves;
+
+    
+
+    int GenerationCurves(ros::NodeHandle &nh);
 
 private:
     int manhattanDistance(int x1, int y1, int x2, int y2);
