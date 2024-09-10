@@ -5,21 +5,33 @@
     <arg name="robot_radius" default="0.1"/>
     <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
 
-    <arg name="robot_count" default="30"/>
+    <arg name="robot_count" default="20"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
 
     <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
 
-    <arg name="w_1"  default="0.1"/>     <!-- weight of jerk or snap  -->
+    <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
+    <arg name="w_2"  default="1.0"/>     <!-- weight of length  -->
 
-    <arg name="w_2"  default="5.0"/>     <!-- weight of length  -->
+    <param name="points_num" type= "int" value="1000"/> <!-- number of points evaluated for each segment-->
 
-    <arg name ="points_num" default = "100"> <!-- number of points evaluated for each segment-->
+    <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
 
-    <arg name ="frequence" default = "50"> <!-- sampling frequence-->
 
+    <!-- limits  vm, wm, atm, awm, arm, cem -->
+    <arg name ="vm" default = "2.0"/>
+
+    <arg name ="wm" default = "2.0"/>
+
+    <arg name ="atm" default = "5.0"/>
+
+    <arg name ="awm" default = "5.0"/>
+
+    <arg name ="arm" default = "5.0"/>
+
+    <arg name ="cem" default = "0.01"/>
 
 
 
@@ -42,6 +54,12 @@
         <param name="bezier_order"  value="$(arg bezier_order)"/>
         <param name="w_1"  value="$(arg w_1)"/>
         <param name="w_2"  value="$(arg w_2)"/>
+        <param name="vm"  value="$(arg vm)"/>
+        <param name="wm"  value="$(arg wm)"/>
+        <param name="atm"  value="$(arg atm)"/>
+        <param name="awm"  value="$(arg awm)"/>
+        <param name="arm"  value="$(arg arm)"/>
+        <param name="cem"  value="$(arg cem)"/>
     </node>
 
     <!-- Open Rviz to visualize-->

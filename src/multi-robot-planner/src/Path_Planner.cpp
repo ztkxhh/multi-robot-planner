@@ -495,7 +495,7 @@ void Path_Planner::inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGr
 }
 
 
-void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub) {
+void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub, ros::Publisher& path_pub) {
     visualization_msgs::MarkerArray marker_array;
 
     // 创建并发布起点Marker
@@ -581,6 +581,42 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
     }
 
     marker_pub.publish(marker_array);
+
+
+    // 发布其multiple_curves,即生成的曲线，nav_msgs::Path
+    nav_msgs::Path path;
+    path.header.frame_id = "map";
+    path.header.stamp = ros::Time::now();
+    int pose_num = 0;
+    
+    for (size_t i = 0; i < multiple_curves[robot_index].size(); i++)
+    {
+        pose_num += multiple_curves[robot_index][i]->_total + 1;
+    }
+
+    path.poses.resize(pose_num);
+
+    int pose_idx = 0;
+    for (size_t i = 0; i < multiple_curves[robot_index].size(); i++)
+    {
+        for (size_t j = 0; j <= multiple_curves[robot_index][i]->_total; j++)
+        {   
+                geometry_msgs::PoseStamped pose;
+                pose.header.frame_id = "map";
+                pose.header.stamp = ros::Time::now();
+                pose.pose.position.x = multiple_curves[robot_index][i]->_points[j].first*map_data_.info.resolution;
+                pose.pose.position.y = multiple_curves[robot_index][i]->_points[j].second*map_data_.info.resolution;
+                pose.pose.position.z = 0.0;
+                pose.pose.orientation.x = 0.0;
+                pose.pose.orientation.y = 0.0;
+                pose.pose.orientation.z = 0.0;
+                pose.pose.orientation.w = 1.0;
+                path.poses[pose_idx] = pose;
+
+                pose_idx++;
+            }
+        }
+    path_pub.publish(path);
 }
 
 
@@ -618,10 +654,10 @@ int Path_Planner::MultiRobotTraGen(
     // Create an empty model
     GRBModel model = GRBModel(env);
 
-    // Set time limit and MIP gap
-    model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
-    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.1);
-    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.1);
+    // // Set time limit and MIP gap
+    // model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
+    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.001);
+    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.01);
 
 
 
@@ -660,7 +696,7 @@ int Path_Planner::MultiRobotTraGen(
 
 
     // set cost funtion
-    GRBQuadExpr obj = 0;
+    GRBQuadExpr obj = 0.0;
     for (int i = 0; i < n; i++) {  // 遍历每个机器人
         int offset = 0;
         for (int j = 0; j < i; j++) { 
@@ -676,8 +712,9 @@ int Path_Planner::MultiRobotTraGen(
                         int var_p = base_idx + p * 2 + dim;  // 变量 p 的索引
                         int var_q = base_idx + q * 2 + dim;  // 变量 q 的索引
 
-                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
-                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
+
+                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
                     }
                 }
             }
@@ -730,6 +767,10 @@ int Path_Planner::MultiRobotTraGen(
 
                 // 加速度连续性：(P_6^i - 2P_5^i + P_4^i) * 20 = (P_3^{i+1} - 2P_2^{i+1} + P_1^{i+1}) * 20
                 model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 2 * vars[base_idx_current + 4 * 2 + dim] + vars[base_idx_current + 3 * 2 + dim] == vars[base_idx_next + 2    * 2 + dim] - 2 * vars[base_idx_next + 1 * 2 + dim] + vars[base_idx_next + 0 * 2 + dim]);
+
+                // 加加速度连续性：(P_6^i - 3P_5^i + 3P_4^i - P_3^i) * 60 = (P_4^{i+1} - 3P_3^{i+1} + 3P_2^{i+1} - P_1^{i+1}) * 60
+                model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 3 * vars[base_idx_current + 4 * 2 + dim] + 3 * vars[base_idx_current + 3 * 2 + dim] - vars[base_idx_current + 2 * 2 + dim] == vars[base_idx_next + 3 * 2 + dim] - 3 * vars[base_idx_next + 2 * 2 + dim] + 3 * vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
+
             }
         }
     }
@@ -920,7 +961,8 @@ int Path_Planner::GenerationCurves(ros::NodeHandle &nh)
                 control_points.emplace_back(all_control_points[i][j][k]);
             }
 
-            multiple_curves[i][j]=std::make_shared<Beziercurve>(control_points, T_s, points_num);
+            multiple_curves[i][j]=std::make_shared<Beziercurve>(control_points, points_num, T_s);
+
         }
     }
 
@@ -944,8 +986,10 @@ int main(int argc, char **argv)
 
     std::shared_ptr<Path_Planner> path_planner = std::make_shared<Path_Planner>(nh);
 
-    // 选择一个机器人，比如第一个机器人，发布其路径可视化
+    // 选择一个机器人，比如第一个机器人，发布其起止点以及走廊可视化
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
+    // 选择一个机器人，比如第一个机器人，发布其multiple_curves,即生成的曲线，nav_msgs::Path
+    ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("visualization_path", 1);
 
 
     ros::Rate rate(10);
@@ -973,7 +1017,7 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         size_t robot_index = 0;
-        path_planner->publishPathVisualization(robot_index, marker_pub);
+        path_planner->publishPathVisualization(robot_index, marker_pub, path_pub);
         ros::spinOnce();
         rate.sleep();
     }

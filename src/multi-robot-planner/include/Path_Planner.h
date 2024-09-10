@@ -6,6 +6,8 @@
 #define PATH_PLANNER_H
 
 #include <ros/ros.h>
+#include<nav_msgs/Path.h>
+#include<geometry_msgs/PoseStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <vector>
 #include <queue>
@@ -58,7 +60,7 @@ public:
     bool mapReceived() const { return map_received_; }
     bool doubleMapReceived() const { return double_map_received_; }
 
-    void publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub);
+    void publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub, ros::Publisher& path_pub);
 
     int MultiRobotTraGen(
     const std::vector<std::vector< std::vector<int>>>  & corridors,

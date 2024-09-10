@@ -219,4 +219,30 @@ void Beziercurve::Atrributes()
         this->_arc_length[i] = this->_arc_length[i - 1] + this->_ds[i - 1];
         // cout << this->_arc_length[i] << endl;
     }
+
+    // // 展示起点和终点的动态属性
+    // ROS_INFO(" ");
+    // ROS_INFO("FOR BEZIER CURVE:");
+    // ROS_INFO("Start Point Dynamics Attributes:");
+    // ROS_INFO("v_s: %f", this->_v_s[0]);
+    // ROS_INFO("w_s: %f", this->_w_s[0]);
+    // ROS_INFO("a_ws: %f", this->_a_ws[0]);
+    // ROS_INFO("a_ts: %f", this->_a_ts[0]);
+    // ROS_INFO("a_rs: %f", this->_a_rs[0]);
+    // ROS_INFO("K_s: %f", this->_K_s[0]);
+    // ROS_INFO("theta: %f", this->_theta[0]);
+    // ROS_INFO("x_fir: %f", this->_x_fir[0]);
+    // ROS_INFO("y_fir: %f", this->_y_fir[0]);
+
+    // ROS_INFO("End Point Dynamics Attributes:");
+    // ROS_INFO("v_s: %f", this->_v_s[this->_total]);
+    // ROS_INFO("w_s: %f", this->_w_s[this->_total]);
+    // ROS_INFO("a_ws: %f", this->_a_ws[this->_total]);
+    // ROS_INFO("a_ts: %f", this->_a_ts[this->_total]);
+    // ROS_INFO("a_rs: %f", this->_a_rs[this->_total]);
+    // ROS_INFO("K_s: %f", this->_K_s[this->_total]);
+    // ROS_INFO("theta: %f", this->_theta[this->_total]);
+    // ROS_INFO("x_fir: %f", this->_x_fir[this->_total]);
+    // ROS_INFO("y_fir: %f", this->_y_fir[this->_total]);
+
 }
