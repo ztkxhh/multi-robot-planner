@@ -33,7 +33,7 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
         // ROS_INFO("Calculated inflation_radius_: %d", inflation_radius_);
     }
 
-    GenerationControlPoints(nh);
+    // GenerationControlPoints(nh);
     GenerationCurves(nh);
 }
 
@@ -620,8 +620,8 @@ int Path_Planner::MultiRobotTraGen(
 
     // Set time limit and MIP gap
     model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
-    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.01);
-    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.01);
+    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.1);
+    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.1);
 
 
 
@@ -735,37 +735,34 @@ int Path_Planner::MultiRobotTraGen(
     }
 
 
+    // 添加机器人之间的距离约束(只限于首段)
+    // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
+    double min_threshold =  4.0 * inflation_radius_ * inflation_radius_;  // 距离的平方
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (manhattanDistance(start_positions[i].first, start_positions[i].second, start_positions[j].first, start_positions[j].second) <= 3.0 * inflation_radius_) {
+                int offset_i = 0;
+                for (int k = 0; k < i; k++) {
+                    offset_i += segments_nums[k] * n_poly * 2;
+                }
 
+                int offset_j = 0;
+                for (int k = 0; k < j; k++) {
+                    offset_j += segments_nums[k] * n_poly * 2;
+                }
 
+                int base_idx_i = offset_i;
+                int base_idx_j = offset_j;
 
-    // // 添加机器人之间的距离约束(只限于首段)
-    // // 对于每一对机器人，计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
-    // double min_threshold =  4.0 * inflation_radius_ * inflation_radius_;  // 距离的平方
-    // for (int i = 0; i < n; i++) {
-    //     for (int j = i + 1; j < n; j++) {
-    //         int offset_i = 0;
-    //         for (int k = 0; k < i; k++) {
-    //             offset_i += segments_nums[k] * n_poly * 2;
-    //         }
+                for (int p = 0; p < n_poly; p++) {
+                    int var_idx_i = base_idx_i + p * 2;
+                    int var_idx_j = base_idx_j + p * 2;
 
-    //         int offset_j = 0;
-    //         for (int k = 0; k < j; k++) {
-    //             offset_j += segments_nums[k] * n_poly * 2;
-    //         }
-
-    //         int base_idx_i = offset_i;
-    //         int base_idx_j = offset_j;
-
-
-    //         for (int p = 0; p < n_poly; p++) {
-    //                 int var_idx_i = base_idx_i + p * 2 ;
-    //                 int var_idx_j = base_idx_j + p * 2 ;
-
-    //                 model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
-    //             }
-    //     }
-    // }
-
+                    model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
+                }
+            }
+        }
+    }
 
 
 
@@ -904,9 +901,15 @@ int Path_Planner::GenerationCurves(ros::NodeHandle &nh)
     nh.param("frequence", frequence, 30);
     double T_s = 1.0 / frequence;  // time for each segement(1/frequence)
 
+    // 根据控制点初始化multiple_curves
+    multiple_curves.resize(all_control_points.size());
+    for (size_t i = 0; i < all_control_points.size(); ++i)
+    {
+        multiple_curves[i].resize(all_control_points[i].size());
+    }
 
 
-    // 生成曲线
+    // 生成每个segment的曲线，并存储到multiple_curves
     for (size_t i = 0; i < all_control_points.size(); ++i)
     {
         for (size_t j = 0; j < all_control_points[i].size(); ++j)
@@ -916,15 +919,17 @@ int Path_Planner::GenerationCurves(ros::NodeHandle &nh)
             {
                 control_points.emplace_back(all_control_points[i][j][k]);
             }
-            
-            // // 生成曲线
-            // BezierCurve curve(control_points);
-            // curves_.emplace_back(curve);
+
+            multiple_curves[i][j]=std::make_shared<Beziercurve>(control_points, T_s, points_num);
         }
     }
 
-    // // 生成曲线成功
-    // curves_generated = true;
+
+    // 将multiple_curves中的曲线进行合并，并存储到成员变量merged_curves
+    // 在合并曲线时，需要相邻曲线
+
+
+
     return 1;
 }
 

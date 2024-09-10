@@ -76,7 +76,7 @@ public:
 
     std::vector<std::vector<std::shared_ptr<Beziercurve>>>multiple_curves;
 
-    
+    std::vector <std::shared_ptr<Beziercurve>> merged_curves;
 
     int GenerationCurves(ros::NodeHandle &nh);
 
