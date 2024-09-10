@@ -163,7 +163,7 @@ int Bernstein::setParam(int poly_order_min, int poly_order_max, double min_order
 					-5,   5,   0,   0,  0,  0,
 					10, -20,  10,   0,  0,  0,
 				   -10,  30, -30,  10,  0,  0,
-				     5, -20,  30, -20,  5,  0,
+				    5, -20,  30, -20,  5,  0,
 				    -1,   5, -10,  10, -5,  1;
 				break;
 			}
