@@ -29,8 +29,8 @@ private:
 
     bool isCollisionWithOtherRobots(int x, int y, bool checkStartPositions);
     bool isValidPosition(int x, int y);
-    bool isCollisionWithStartPositions(int x, int y);
     void outputStartAndGoalPositions();
+    bool checkStartsandGoals();
 };
 
 #endif // GEN_STARTS_GOALS_H

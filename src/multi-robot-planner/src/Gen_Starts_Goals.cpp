@@ -20,7 +20,85 @@ Gen_Starts_Goals::Gen_Starts_Goals(ros::NodeHandle& nh)
     // 订阅膨胀地图
     map_sub = nh.subscribe("double_inflated_map", 1, &Gen_Starts_Goals::mapCallback, this);
 
+
+
 }
+
+
+bool Gen_Starts_Goals::checkStartsandGoals()
+{
+    // 检查起点和终点是否在地图范围内
+    for (int i = 0; i < robot_count; ++i) {
+        if (start_positions[i].first < 0 || start_positions[i].first >= width ||
+            start_positions[i].second < 0 || start_positions[i].second >= height) {
+            ROS_ERROR("Start position for robot %d is out of map bounds", i + 1);
+            return false;
+        }
+
+        if (goal_positions[i].first < 0 || goal_positions[i].first >= width ||
+            goal_positions[i].second < 0 || goal_positions[i].second >= height) {
+            ROS_ERROR("Goal position for robot %d is out of map bounds", i + 1);
+            return false;
+        }
+    }
+
+    // 检查起点和终点是否在障碍物上
+    for (int i = 0; i < robot_count; ++i) {
+        if (last_received_map.data[start_positions[i].first + start_positions[i].second * width] != 0) {
+            ROS_ERROR("Start position for robot %d is on an obstacle", i + 1);
+            return false;
+        }
+
+        if (last_received_map.data[goal_positions[i].first + goal_positions[i].second * width] != 0) {
+            ROS_ERROR("Goal position for robot %d is on an obstacle", i + 1);
+            return false;
+        }
+    }
+
+    // 检查起点和终点是否重合
+    for (int i = 0; i < robot_count; ++i) {
+        if (start_positions[i].first == goal_positions[i].first && start_positions[i].second == goal_positions[i].second) {
+            ROS_ERROR("Start and goal positions for robot %d are the same", i + 1);
+            return false;
+        }
+    }
+
+    // 检查起点之间是否间隔大于2倍机器人半径
+    for (int i = 0; i < robot_count; ++i) {
+        for (int j = i + 1; j < robot_count; ++j) {
+            if (std::hypot(start_positions[i].first - start_positions[j].first, start_positions[i].second - start_positions[j].second) <= 2 * radius_in_cells) {
+                ROS_ERROR("Start positions for robots %d and %d are too close", i + 1, j + 1);
+                return false;
+            }
+        }
+    }
+
+    // 检查终点之间是否间隔大于2倍机器人半径
+    for (int i = 0; i < robot_count; ++i) {
+        for (int j = i + 1; j < robot_count; ++j) {
+            if (std::hypot(goal_positions[i].first - goal_positions[j].first, goal_positions[i].second - goal_positions[j].second) <= 2 * radius_in_cells) {
+                ROS_ERROR("Goal positions for robots %d and %d are too close", i + 1, j + 1);
+                return false;
+            }
+        }
+    }
+
+    // 检查不同机器人的起点和终点之间是否间隔大于2倍机器人半径
+    for (int i = 0; i < robot_count; ++i) {
+        for (int j = 0; j < robot_count; ++j) {
+            if (i == j) {
+                continue;
+            }
+
+            if (std::hypot(start_positions[i].first - goal_positions[j].first, start_positions[i].second - goal_positions[j].second) <= 2 * radius_in_cells) {
+                ROS_ERROR("Start position for robot %d and goal position for robot %d are too close", i + 1, j + 1);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 
 void Gen_Starts_Goals::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
     if (map_received) {
@@ -34,8 +112,12 @@ void Gen_Starts_Goals::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
     // 计算机器人的半径在栅格中的表示
     radius_in_cells = std::ceil(robot_radius / resolution);
+    // ROS_INFO("Robot radius in cells: %d", radius_in_cells);
 
     generateStartAndGoalPositions();
+
+    bool dasd = checkStartsandGoals();
+
 
     map_received = true;  // 标记地图已经接收
 }
@@ -59,7 +141,9 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
             start_x = dis_x(gen);
             start_y = dis_y(gen);
 
-            if (isValidPosition(start_x, start_y) && !isCollisionWithOtherRobots(start_x, start_y, true)) {
+            if (isValidPosition(start_x, start_y) &&
+                 !isCollisionWithOtherRobots(start_x, start_y, true)&&
+                 !isCollisionWithOtherRobots(start_x, start_y, false)) {
                 valid_start = true;
                 start_positions.push_back({start_x, start_y});
             }
@@ -72,7 +156,7 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
 
             if (isValidPosition(goal_x, goal_y) &&
                 !isCollisionWithOtherRobots(goal_x, goal_y, false) &&
-                !isCollisionWithStartPositions(goal_x, goal_y) &&
+                !isCollisionWithOtherRobots(goal_x, goal_y, true) &&
                 (goal_x != start_x || goal_y != start_y)) {
                 valid_goal = true;
                 goal_positions.push_back({goal_x, goal_y});
@@ -85,21 +169,14 @@ bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartP
     const auto& positions_to_check = checkStartPositions ? start_positions : goal_positions;
 
     for (const auto& pos : positions_to_check) {
-        if (std::hypot(x - pos.first, y - pos.second) < 10 * radius_in_cells) {
+        if (std::hypot(x - pos.first, y - pos.second)  < 5 * radius_in_cells) {
             return true;
         }
     }
     return false;
 }
 
-bool Gen_Starts_Goals::isCollisionWithStartPositions(int x, int y) {
-    for (const auto& start_pos : start_positions) {
-        if (std::hypot(x - start_pos.first, y - start_pos.second) < 10 * radius_in_cells) {
-            return true;
-        }
-    }
-    return false;
-}
+
 
 bool Gen_Starts_Goals::isValidPosition(int x, int y) {
     // 检查是否超出地图边界，考虑机器人半径

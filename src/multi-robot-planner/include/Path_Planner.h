@@ -82,6 +82,9 @@ public:
 
     int GenerationCurves(ros::NodeHandle &nh);
 
+    Gen_Starts_Goals planner_;
+
+
 private:
     int manhattanDistance(int x1, int y1, int x2, int y2);
     std::vector<std::shared_ptr<Node>> astar(const nav_msgs::OccupancyGrid& map, int start_x, int start_y, int goal_x, int goal_y, int max_steps);
@@ -103,7 +106,6 @@ private:
 
     int inflation_radius_;
 
-    Gen_Starts_Goals planner_;
     std::vector<std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>> robot_corridors_;
 };
 

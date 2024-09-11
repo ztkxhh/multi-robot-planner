@@ -60,6 +60,7 @@ bool Path_Planner::planPaths()
         return flag;
     }
 
+
     const std::vector<std::pair<int, int>> &start_positions = planner_.getStartPositions();
     const std::vector<std::pair<int, int>> &goal_positions = planner_.getGoalPositions();
 
@@ -866,74 +867,39 @@ int Path_Planner::MultiRobotTraGen(
     }
 
 
-    // // 如果机器人的轨迹数量大于1，则添加轨迹间的位置约束，具体包括：
-    // //两个轨迹之间的位置约束：上一段的终点x,y方向位于两个corridor的交集中
-    // //两个轨迹之间的位置约束：下一段的起点x,y方向位于两个corridor的交集中
-    // // 首先计算计算相邻两个corridor的交集corridor_corss = std::vector<int>{min_x, max_x, min_y, max_y}
-    // // 然后添加位置约束
+
+
+    // // 添加机器人之间的距离约束(只限于首段)
+    // // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
+    // double min_threshold =  4.0 * inflation_radius_ * inflation_radius_;  // 距离的平方
     // for (int i = 0; i < n; i++) {
-    //     int offset = 0;
-    //     for (int j = 0; j < i; j++) {
-    //         offset += segments_nums[j] * n_poly * 2;
-    //     }
+    //     for (int j = i + 1; j < n; j++) {
+    //         if (std::hypot(start_positions[i].first - start_positions[j].first, start_positions[i].second - start_positions[j].second) <= 2.0 * inflation_radius_) {
+                
+    //             ROS_INFO("Robot %d and Robot %d are too close !!!!!!!!!!!!!!", i, j);
 
-    //     for (int seg = 0; seg < segments_nums[i] - 1; seg++) {
-    //         int base_idx_current = offset + seg * n_poly * 2;
-    //         int base_idx_next = offset + (seg + 1) * n_poly * 2;
+    //             int offset_i = 0;
+    //             for (int k = 0; k < i; k++) {
+    //                 offset_i += segments_nums[k] * n_poly * 2;
+    //             }
 
-    //         // 计算相邻两个corridor的交集
-    //         const auto &corridor_current = corridors[i][seg];
-    //         const auto &corridor_next = corridors[i][seg + 1];
-    //         int min_x = std::max(corridor_current[0], corridor_next[0]);
-    //         int max_x = std::min(corridor_current[1], corridor_next[1]);
-    //         int min_y = std::max(corridor_current[2], corridor_next[2]);
-    //         int max_y = std::min(corridor_current[3], corridor_next[3]);
+    //             int offset_j = 0;
+    //             for (int k = 0; k < j; k++) {
+    //                 offset_j += segments_nums[k] * n_poly * 2;
+    //             }
 
-    //         // x 方向
-    //         model.addConstr(vars[base_idx_current + 5 * 2] >= min_x);
-    //         model.addConstr(vars[base_idx_current + 5 * 2] <= max_x);
-    //         model.addConstr(vars[base_idx_next] >= min_x);
-    //         model.addConstr(vars[base_idx_next] <= max_x);
+    //             int base_idx_i = offset_i;
+    //             int base_idx_j = offset_j;
 
-    //         // y 方向
-    //         model.addConstr(vars[base_idx_current + 5 * 2 + 1] >= min_y);
-    //         model.addConstr(vars[base_idx_current + 5 * 2 + 1] <= max_y);
-    //         model.addConstr(vars[base_idx_next + 1] >= min_y);
-    //         model.addConstr(vars[base_idx_next + 1] <= max_y);
+    //             for (int p = 0; p < n_poly; p++) {
+    //                 int var_idx_i = base_idx_i + p * 2;
+    //                 int var_idx_j = base_idx_j + p * 2;
+
+    //                 model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
+    //             }
+    //         }
     //     }
     // }
-
-    
-
-
-    // 添加机器人之间的距离约束(只限于首段)
-    // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
-    double min_threshold =  4.0 * inflation_radius_ * inflation_radius_;  // 距离的平方
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            if (manhattanDistance(start_positions[i].first, start_positions[i].second, start_positions[j].first, start_positions[j].second) <= 3.0 * inflation_radius_) {
-                int offset_i = 0;
-                for (int k = 0; k < i; k++) {
-                    offset_i += segments_nums[k] * n_poly * 2;
-                }
-
-                int offset_j = 0;
-                for (int k = 0; k < j; k++) {
-                    offset_j += segments_nums[k] * n_poly * 2;
-                }
-
-                int base_idx_i = offset_i;
-                int base_idx_j = offset_j;
-
-                for (int p = 0; p < n_poly; p++) {
-                    int var_idx_i = base_idx_i + p * 2;
-                    int var_idx_j = base_idx_j + p * 2;
-
-                    model.addQConstr(vars[var_idx_i] * vars[var_idx_i]  - 2* vars[var_idx_i]* vars[var_idx_j] + vars[var_idx_j]* vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1]  -2 * vars[var_idx_i + 1]* vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1]   >= min_threshold);
-                }
-            }
-        }
-    }
 
 
 
