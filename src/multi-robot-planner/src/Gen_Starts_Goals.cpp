@@ -127,7 +127,8 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis_x(radius_in_cells, width - radius_in_cells - 1);
     std::uniform_int_distribution<> dis_y(radius_in_cells, height - radius_in_cells - 1);
-
+    int attempts = 0;
+    int max_attempts = 1000000000;
     start_positions.clear();
     goal_positions.clear();
 
@@ -147,8 +148,13 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
                 valid_start = true;
                 start_positions.push_back({start_x, start_y});
             }
+            attempts++;
+            if (attempts > max_attempts) {
+                ROS_ERROR("Failed to find valid start position after max_attempts ");
+                return;
+            }
         }
-
+        attempts = 0;
         // 找到有效的终点
         while (!valid_goal) {
             goal_x = dis_x(gen);
@@ -160,6 +166,11 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
                 (goal_x != start_x || goal_y != start_y)) {
                 valid_goal = true;
                 goal_positions.push_back({goal_x, goal_y});
+            }
+            attempts++;
+            if (attempts > max_attempts) {
+                ROS_ERROR("Failed to find valid goal position after max_attempts ");
+                return;
             }
         }
     }
