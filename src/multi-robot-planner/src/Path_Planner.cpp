@@ -517,7 +517,7 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
     start_marker.scale.x = 0.5; // 设置点的大小
     start_marker.scale.y = 0.5;
     start_marker.scale.z = 0.5;
-    start_marker.color.r = 1.0;
+    start_marker.color.r = 1.0; // 颜色设置为红色
     start_marker.color.g = 0.0;
     start_marker.color.b = 0.0;
     start_marker.color.a = 1.0; // 透明度
@@ -540,7 +540,7 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
 
     goal_marker.color.r = 0.0;
     goal_marker.color.g = 0.0;
-    goal_marker.color.b = 1.0;
+    goal_marker.color.b = 1.0; // 颜色设置为蓝色
 
     // 初始化 orientation 为单位四元数
     goal_marker.pose.orientation.x = 0.0;
@@ -573,9 +573,9 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
             control_point_marker.scale.z = 0.5;
 
             // Change color every 6 points
-            if (control_point_marker.id % 6 == 0)
+            if ((control_point_marker.id-2) % 6 == 0)
             {
-                control_point_marker.color.r = 1.0;
+                control_point_marker.color.r = 0.0;
                 control_point_marker.color.g = 0.0;
                 control_point_marker.color.b = 0.0;
                 control_point_marker.color.a = 1.0;
@@ -623,7 +623,7 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
         corridor_marker.pose.position.z = 0.5;
         corridor_marker.scale.x = (corridors[i].second[1] - corridors[i].second[0])*map_data_.info.resolution;
         corridor_marker.scale.y = (corridors[i].second[3] - corridors[i].second[2])*map_data_.info.resolution;
-        corridor_marker.scale.z = 0.5;
+        corridor_marker.scale.z = 0.1;
         corridor_marker.color.r = 0.0;
         corridor_marker.color.g = 1.0;
         corridor_marker.color.b = 0.0;
@@ -666,7 +666,7 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher& 
                 pose.header.stamp = ros::Time::now();
                 pose.pose.position.x = multiple_curves[robot_index][i]->_points[j].first*map_data_.info.resolution;
                 pose.pose.position.y = multiple_curves[robot_index][i]->_points[j].second*map_data_.info.resolution;
-                pose.pose.position.z = 0.0;
+                pose.pose.position.z = 1.0;
                 pose.pose.orientation.x = 0.0;
                 pose.pose.orientation.y = 0.0;
                 pose.pose.orientation.z = 0.0;
@@ -691,8 +691,6 @@ int Path_Planner::MultiRobotTraGen(
     const int & curve_order)
 {
 
-
-
     int n = corridors.size(); //机器人数量
 
 
@@ -709,7 +707,7 @@ int Path_Planner::MultiRobotTraGen(
     GRBEnv env = GRBEnv(true);
 
     //禁止打印输出信息
-    env.set("OutputFlag", "0");
+    // env.set("OutputFlag", "0");
 
     env.start();
 
@@ -718,8 +716,8 @@ int Path_Planner::MultiRobotTraGen(
 
     // // // Set time limit and MIP gap
     // // model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
-    model.getEnv().set(GRB_DoubleParam_MIPGap, 0.000001);
-    model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.000001);
+    // model.getEnv().set(GRB_DoubleParam_MIPGap, 0.000001);
+    // model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.000001);
 
     // model.getEnv().set(GRB_IntParam_Presolve, 0);
 
@@ -756,8 +754,7 @@ int Path_Planner::MultiRobotTraGen(
         }
     }
 
-
-    // set cost funtion
+    // set cost funtion,遍历每个机器人，遍历矩阵的每个元素，设置目标函数
     GRBQuadExpr obj = 0.0;
     for (int i = 0; i < n; i++) {  // 遍历每个机器人
         int offset = 0;
@@ -769,13 +766,13 @@ int Path_Planner::MultiRobotTraGen(
             int base_idx = offset + seg * n_poly * 2;  // 当前段的控制点起始索引
 
             for (int p = 0; p < n_poly; p++) {  // 遍历当前段的所有控制点
-                for (int q = 0; q <= p; q++) {  // 遍历对称矩阵的下三角
+                for (int q = 0; q < n_poly; q++) {  // 遍历矩阵的所有元素
                     for (int dim = 0; dim < 2; dim++) {  // x 和 y 方向
                         int var_p = base_idx + p * 2 + dim;  // 变量 p 的索引
                         int var_q = base_idx + q * 2 + dim;  // 变量 q 的索引
 
-                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
-                        obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
+                        // obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
 
                         // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
                     }
@@ -869,42 +866,42 @@ int Path_Planner::MultiRobotTraGen(
     }
 
 
-    // 如果机器人的轨迹数量大于1，则添加轨迹间的位置约束，具体包括：
-    //两个轨迹之间的位置约束：上一段的终点x,y方向位于两个corridor的交集中
-    //两个轨迹之间的位置约束：下一段的起点x,y方向位于两个corridor的交集中
-    // 首先计算计算相邻两个corridor的交集corridor_corss = std::vector<int>{min_x, max_x, min_y, max_y}
-    // 然后添加位置约束
-    for (int i = 0; i < n; i++) {
-        int offset = 0;
-        for (int j = 0; j < i; j++) {
-            offset += segments_nums[j] * n_poly * 2;
-        }
+    // // 如果机器人的轨迹数量大于1，则添加轨迹间的位置约束，具体包括：
+    // //两个轨迹之间的位置约束：上一段的终点x,y方向位于两个corridor的交集中
+    // //两个轨迹之间的位置约束：下一段的起点x,y方向位于两个corridor的交集中
+    // // 首先计算计算相邻两个corridor的交集corridor_corss = std::vector<int>{min_x, max_x, min_y, max_y}
+    // // 然后添加位置约束
+    // for (int i = 0; i < n; i++) {
+    //     int offset = 0;
+    //     for (int j = 0; j < i; j++) {
+    //         offset += segments_nums[j] * n_poly * 2;
+    //     }
 
-        for (int seg = 0; seg < segments_nums[i] - 1; seg++) {
-            int base_idx_current = offset + seg * n_poly * 2;
-            int base_idx_next = offset + (seg + 1) * n_poly * 2;
+    //     for (int seg = 0; seg < segments_nums[i] - 1; seg++) {
+    //         int base_idx_current = offset + seg * n_poly * 2;
+    //         int base_idx_next = offset + (seg + 1) * n_poly * 2;
 
-            // 计算相邻两个corridor的交集
-            const auto &corridor_current = corridors[i][seg];
-            const auto &corridor_next = corridors[i][seg + 1];
-            int min_x = std::max(corridor_current[0], corridor_next[0]);
-            int max_x = std::min(corridor_current[1], corridor_next[1]);
-            int min_y = std::max(corridor_current[2], corridor_next[2]);
-            int max_y = std::min(corridor_current[3], corridor_next[3]);
+    //         // 计算相邻两个corridor的交集
+    //         const auto &corridor_current = corridors[i][seg];
+    //         const auto &corridor_next = corridors[i][seg + 1];
+    //         int min_x = std::max(corridor_current[0], corridor_next[0]);
+    //         int max_x = std::min(corridor_current[1], corridor_next[1]);
+    //         int min_y = std::max(corridor_current[2], corridor_next[2]);
+    //         int max_y = std::min(corridor_current[3], corridor_next[3]);
 
-            // x 方向
-            model.addConstr(vars[base_idx_current + 5 * 2] >= min_x);
-            model.addConstr(vars[base_idx_current + 5 * 2] <= max_x);
-            model.addConstr(vars[base_idx_next] >= min_x);
-            model.addConstr(vars[base_idx_next] <= max_x);
+    //         // x 方向
+    //         model.addConstr(vars[base_idx_current + 5 * 2] >= min_x);
+    //         model.addConstr(vars[base_idx_current + 5 * 2] <= max_x);
+    //         model.addConstr(vars[base_idx_next] >= min_x);
+    //         model.addConstr(vars[base_idx_next] <= max_x);
 
-            // y 方向
-            model.addConstr(vars[base_idx_current + 5 * 2 + 1] >= min_y);
-            model.addConstr(vars[base_idx_current + 5 * 2 + 1] <= max_y);
-            model.addConstr(vars[base_idx_next + 1] >= min_y);
-            model.addConstr(vars[base_idx_next + 1] <= max_y);
-        }
-    }
+    //         // y 方向
+    //         model.addConstr(vars[base_idx_current + 5 * 2 + 1] >= min_y);
+    //         model.addConstr(vars[base_idx_current + 5 * 2 + 1] <= max_y);
+    //         model.addConstr(vars[base_idx_next + 1] >= min_y);
+    //         model.addConstr(vars[base_idx_next + 1] <= max_y);
+    //     }
+    // }
 
     
 
@@ -1006,24 +1003,29 @@ int Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
     nh.param("/path_planning/minimum_order",     minimum_order,  3.0); // 最小阶数
     nh.param("/path_planning/bezier_order",     bezier_order,  5); // 最小阶数
 
-    // int _poly_order_min = 3;
-    // int _poly_order_max = 10;
-    // Bernstein _bernstein;
-    // if(_bernstein.setParam(_poly_order_min, _poly_order_max, minimum_order) == -1) 
-    // {
-    //     ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
-    // }
-    // vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
-    // MatrixXd Q_jerk = MQM[bezier_order];
 
-    // // 显示Q_jerk
-    // for (int i = 0; i < Q_jerk.rows(); i++)
-    // {
-    //     for (int j = 0; j < Q_jerk.cols(); j++)
-    //     {
-    //         ROS_INFO("Q_jerk(%d, %d): %.2f", i, j, Q_jerk(i, j));
-    //     }
-    // }
+
+    int _poly_order_min = 3;
+    int _poly_order_max = 10;
+    Bernstein _bernstein;
+    if(_bernstein.setParam(_poly_order_min, _poly_order_max, minimum_order) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
+    MatrixXd Q_jerk = MQM[bezier_order];
+
+    // 显示Q_jerk
+    for (int i = 0; i < Q_jerk.rows(); i++)
+    {
+        for (int j = 0; j < Q_jerk.cols(); j++)
+        {
+            ROS_INFO("Q_jerk(%d, %d): %.2f", i, j, Q_jerk(i, j));
+        }
+    }
+
+
+
 
     // 计算M1和M2
     MatrixXd M(6, 6);
@@ -1038,28 +1040,28 @@ int Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
     Q_J << 0, 0, 0 , 0, 0, 0,
         0, 0, 0 , 0, 0, 0,
         0, 0, 0 , 0, 0, 0,
-        0, 0 , 0, 36, 144, 360,
-        0, 0 , 0, 144, 576, 1440,
-        0, 0 , 0, 360, 1440, 3600;
+        0, 0 , 0, 36, 72, 120,
+        0, 0 , 0, 72, 192, 480,
+        0, 0 , 0, 120, 360, 720;
 
-    MatrixXd Q_jerk = M.transpose() * Q_J * M;
+    MatrixXd Q_jerk2 = M.transpose() * Q_J * M;
 
-    // //显示Q_jerk
-    // for (int i = 0; i < Q_jerk.rows(); i++)
-    // {
-    //     for (int j = 0; j < Q_jerk.cols(); j++)
-    //     {
-    //         ROS_INFO("M3(%d, %d): %.2f", i, j, Q_jerk(i, j));
-    //     }
-    // }
+    //显示Q_jerk
+    for (int i = 0; i < Q_jerk2.rows(); i++)
+    {
+        for (int j = 0; j < Q_jerk2.cols(); j++)
+        {
+            ROS_INFO("Q_jerk2(%d, %d): %.2f", i, j, Q_jerk2(i, j));
+        }
+    }
 
     MatrixXd Q_L(6, 6);
-    Q_L << 0, 0, 0, 0, 0, 0,
-        0, 1, 2, 3, 4, 5,
-        0, 2, 4, 6, 8, 10,
-        0, 3, 6, 9, 12, 15,
-        0, 4, 8, 12, 16, 20,
-        0, 5, 10, 15, 20, 25;
+    Q_L << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        0.0, 1.0, 4.0/3.0, 6.0/4.0, 8.0/5.0, 10.0/6.0,
+        0.0, 1.0, 6.0/4.0, 9.0/5.0, 12.0/6.0, 15.0/6.0,
+        0.0, 1.0, 8.0/5.0, 12.0/6.0, 16.0/7.0, 20.0/8.0,
+        0.0, 1.0, 10.0/6.0, 15.0/7.0, 20.0/8.0, 25.0/9.0;
     
     MatrixXd Q_length = M.transpose() * Q_L * M;
 
@@ -1100,19 +1102,19 @@ int Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
     {
         ROS_INFO("Success to optimize the path by getting control points.");
 
-        // // 显示优化得到的控制点
-        for (size_t i = 0; i < all_control_points.size(); ++i)
-        {
-            ROS_INFO("Robot %lu", i + 1);
-            for (size_t j = 0; j < all_control_points[i].size(); ++j)
-            {
-                ROS_INFO("Segment %lu", j + 1);
-                for (size_t k = 0; k < all_control_points[i][j].size(); ++k)
-                {
-                    ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, all_control_points[i][j][k].first, all_control_points[i][j][k].second);
-                }
-            }
-        }
+        // // // 显示优化得到的控制点
+        // for (size_t i = 0; i < all_control_points.size(); ++i)
+        // {
+        //     ROS_INFO("Robot %lu", i + 1);
+        //     for (size_t j = 0; j < all_control_points[i].size(); ++j)
+        //     {
+        //         ROS_INFO("Segment %lu", j + 1);
+        //         for (size_t k = 0; k < all_control_points[i][j].size(); ++k)
+        //         {
+        //             ROS_INFO("Control Point %lu: (%.2f, %.2f)", k + 1, all_control_points[i][j][k].first, all_control_points[i][j][k].second);
+        //         }
+        //     }
+        // }
 
 
         return 1;

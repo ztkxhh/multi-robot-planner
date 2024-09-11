@@ -13,7 +13,7 @@
     <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
 
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
-    <arg name="w_2"  default="10.0"/>     <!-- weight of length  -->
+    <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
     <param name="points_num" type= "int" value="1000"/> <!-- number of points evaluated for each segment-->
 

@@ -23,6 +23,7 @@ Several initializer are provided, and the instance is initialized according to t
 #include <string>
 #include <Eigen/Dense>
 #include <vector>
+#include <ros/ros.h>
 
 using namespace std;
 using namespace Eigen;
