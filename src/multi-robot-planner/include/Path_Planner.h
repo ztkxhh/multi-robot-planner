@@ -71,7 +71,7 @@ public:
     const std::vector<std::pair<int, int>> & goal_positions,
     const int & curve_order);
 
-    int GenerationControlPoints(ros::NodeHandle &nh);
+    bool GenerationControlPoints(ros::NodeHandle &nh);
 
     std::vector<std::vector< std::vector<std::pair<double,double>>>> all_control_points;
     std::vector<std::vector< std::vector<std::pair<double,double>>>> getControlPoints(){ return all_control_points; }
@@ -80,7 +80,7 @@ public:
 
     std::vector <std::shared_ptr<Beziercurve>> merged_curves;
 
-    int GenerationCurves(ros::NodeHandle &nh);
+    bool GenerationCurves(ros::NodeHandle &nh);
 
     Gen_Starts_Goals planner_;
 
