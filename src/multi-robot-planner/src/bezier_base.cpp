@@ -115,18 +115,6 @@ int Bernstein::setParam(int poly_order_min, int poly_order_max, double min_order
 		else
 			Q = (_min_order - min_order_l) * Q_u + (min_order_u - _min_order) * Q_l;
 
-		// ROS_INFO("Q matrix when order %d: ", order);
-
-		// // 显示Q矩阵
-		// for (int i = 0; i < Q.rows(); i++)
-		// {
-        // for (int j = 0; j < Q.cols(); j++)
-        // {
-        //     ROS_INFO("Q(%d, %d): %.2f", i, j, Q(i, j));
-        // }
-		// }
-
-
 	 	switch(order)
 		{	
 			case 0: 
@@ -282,17 +270,6 @@ int Bernstein::setParam(int poly_order_min, int poly_order_max, double min_order
 		
 		MList.push_back(M);
 		MQM = M.transpose() * Q * M; // Get the cost block after mapping the coefficients
-
-		// ROS_INFO("MQM matrix when order %d: ", order);
-
-		// // 显示Q矩阵
-		// for (int i = 0; i < MQM.rows(); i++)
-		// {
-        // for (int j = 0; j < MQM.cols(); j++)
-        // {
-        //     ROS_INFO("MQM(%d, %d): %.2f", i, j, MQM(i, j));
-        // }
-		// }
 
 
 		MatrixXd F  = CholeskyDecomp(Q);

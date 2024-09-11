@@ -707,7 +707,7 @@ int Path_Planner::MultiRobotTraGen(
     GRBEnv env = GRBEnv(true);
 
     //禁止打印输出信息
-    // env.set("OutputFlag", "0");
+    env.set("OutputFlag", "0");
 
     env.start();
 
@@ -771,10 +771,10 @@ int Path_Planner::MultiRobotTraGen(
                         int var_p = base_idx + p * 2 + dim;  // 变量 p 的索引
                         int var_q = base_idx + q * 2 + dim;  // 变量 q 的索引
 
-                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
+                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
                         // obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
 
-                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
                     }
                 }
             }
@@ -1015,74 +1015,23 @@ int Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
     vector<MatrixXd> MQM  =    _bernstein.getMQM();  // minimum jerk
     MatrixXd Q_jerk = MQM[bezier_order];
 
-    // 显示Q_jerk
-    for (int i = 0; i < Q_jerk.rows(); i++)
-    {
-        for (int j = 0; j < Q_jerk.cols(); j++)
-        {
-            ROS_INFO("Q_jerk(%d, %d): %.2f", i, j, Q_jerk(i, j));
-        }
-    }
-
-
-
-
-    // 计算M1和M2
-    MatrixXd M(6, 6);
-    M << 1,   0,   0,   0,  0,  0,
-        -5,   5,   0,   0,  0,  0,
-        10, -20,  10,   0,  0,  0,
-        -10,  30, -30,  10,  0,  0,
-        5, -20,  30, -20,  5,  0,
-        -1,   5, -10,  10, -5,  1;
-
-    MatrixXd Q_J(6, 6);
-    Q_J << 0, 0, 0 , 0, 0, 0,
-        0, 0, 0 , 0, 0, 0,
-        0, 0, 0 , 0, 0, 0,
-        0, 0 , 0, 36, 72, 120,
-        0, 0 , 0, 72, 192, 480,
-        0, 0 , 0, 120, 360, 720;
-
-    MatrixXd Q_jerk2 = M.transpose() * Q_J * M;
-
-    //显示Q_jerk
-    for (int i = 0; i < Q_jerk2.rows(); i++)
-    {
-        for (int j = 0; j < Q_jerk2.cols(); j++)
-        {
-            ROS_INFO("Q_jerk2(%d, %d): %.2f", i, j, Q_jerk2(i, j));
-        }
-    }
-
-    MatrixXd Q_L(6, 6);
-    Q_L << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-        0.0, 1.0, 4.0/3.0, 6.0/4.0, 8.0/5.0, 10.0/6.0,
-        0.0, 1.0, 6.0/4.0, 9.0/5.0, 12.0/6.0, 15.0/6.0,
-        0.0, 1.0, 8.0/5.0, 12.0/6.0, 16.0/7.0, 20.0/8.0,
-        0.0, 1.0, 10.0/6.0, 15.0/7.0, 20.0/8.0, 25.0/9.0;
-    
-    MatrixXd Q_length = M.transpose() * Q_L * M;
-
-    // //显示Q_length
-    // for (int i = 0; i < Q_length.rows(); i++)
+    // // 显示Q_jerk
+    // for (int i = 0; i < Q_jerk.rows(); i++)
     // {
-    //     for (int j = 0; j < Q_length.cols(); j++)
+    //     for (int j = 0; j < Q_jerk.cols(); j++)
     //     {
-    //         ROS_INFO("Q_length(%d, %d): %.2f", i, j, Q_length(i, j));
+    //         ROS_INFO("Q_jerk(%d, %d): %.2f", i, j, Q_jerk(i, j));
     //     }
     // }
-    
 
 
-    // Bernstein _bernstein2;
-    // if(_bernstein2.setParam(_poly_order_min, _poly_order_max, 1.0) == -1) 
-    // {
-    //     ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
-    // }
-    // vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
-    // MatrixXd Q_length = MQM2[bezier_order];
+    Bernstein _bernstein2;
+    if(_bernstein2.setParam(_poly_order_min, _poly_order_max, 1.0) == -1) 
+    {
+        ROS_ERROR(" The trajectory order is set beyond the library's scope, please re-set ");
+    }
+    vector<MatrixXd> MQM2  =    _bernstein2.getMQM();  // minimum length
+    MatrixXd Q_length = MQM2[bezier_order];
 
     // // 显示Q_length
     // for (int i = 0; i < Q_length.rows(); i++)

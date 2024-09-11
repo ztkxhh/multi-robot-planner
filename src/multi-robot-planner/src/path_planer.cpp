@@ -2,7 +2,6 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <vector>
 #include <random>
 
 class RobotPathPlanner {
