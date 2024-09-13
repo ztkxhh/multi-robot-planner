@@ -210,31 +210,296 @@ void Beziercurve::Atrributes()
         // cout << current_dym.w_s << endl;
     }
 
+}
+
+void Beziercurve::TOTP(const Limits & lim)
+{
+    this->Vars.c_1.resize(this->_total + 1);
+    this->Vars.c_2.resize(this->_total);
+    this->Vars.c_3.resize(this->_total);
+    this->Vars.c_4.resize(this->_total);
+    this->Vars.c_5.resize(this->_total);
+    this->Vars.c_6.resize(this->_total);
+    this->Vars.c_7.resize(this->_total);
+    this->Vars.c_8.resize(this->_total);
+    this->Vars.c_9.resize(this->_total);
+    this->Vars.c_10.resize(this->_total-1);
+    this->Vars.c_11.resize(this->_total-1);
+    this->Vars.c_12.resize(this->_total-1);
+    this->Vars.c_13.resize(this->_total-1);
+    this->Vars.c_14.resize(this->_total-1);
+    this->Vars.c_15.resize(this->_total-1);
+
+    this->_T_i.resize(this->_total);
 
 
-    // // 展示起点和终点的动态属性
-    // ROS_INFO(" ");
-    // ROS_INFO("FOR BEZIER CURVE:");
-    // ROS_INFO("Start Point Dynamics Attributes:");
-    // ROS_INFO("v_s: %f", this->_v_s[0]);
-    // ROS_INFO("w_s: %f", this->_w_s[0]);
-    // ROS_INFO("a_ws: %f", this->_a_ws[0]);
-    // ROS_INFO("a_ts: %f", this->_a_ts[0]);
-    // ROS_INFO("a_rs: %f", this->_a_rs[0]);
-    // ROS_INFO("K_s: %f", this->_K_s[0]);
-    // ROS_INFO("theta: %f", this->_theta[0]);
-    // ROS_INFO("x_fir: %f", this->_x_fir[0]);
-    // ROS_INFO("y_fir: %f", this->_y_fir[0]);
+    /*
+    Calculate variables for optimization
+    */
+    // Calculate c_1 //
+    for (int i = 0; i < this->_total + 1; ++i)
+    {
+        // v_con
+        double a = 2.0 / this->_T_s;
+        double b = 1.0 / this->_K_s[i];
+        double c = b - lim.cem;
+        double ce = a * sqrt(b * b - c * c); // chord error
+        double vc = std::min(lim.v_max, ce);
+        double vci = vc * vc / (this->_v_s[i] * this->_v_s[i]);
+        // w_con
+        double wci = lim.w_max * lim.w_max / (this->_w_s[i] * this->_w_s[i]);
+        // ar_con
+        double arci = fabs(lim.ar_max / this->_a_rs[i]);
 
-    // ROS_INFO("End Point Dynamics Attributes:");
-    // ROS_INFO("v_s: %f", this->_v_s[this->_total]);
-    // ROS_INFO("w_s: %f", this->_w_s[this->_total]);
-    // ROS_INFO("a_ws: %f", this->_a_ws[this->_total]);
-    // ROS_INFO("a_ts: %f", this->_a_ts[this->_total]);
-    // ROS_INFO("a_rs: %f", this->_a_rs[this->_total]);
-    // ROS_INFO("K_s: %f", this->_K_s[this->_total]);
-    // ROS_INFO("theta: %f", this->_theta[this->_total]);
-    // ROS_INFO("x_fir: %f", this->_x_fir[this->_total]);
-    // ROS_INFO("y_fir: %f", this->_y_fir[this->_total]);
+        double d = std::min(std::min(vci, wci), arci);
+
+        this->Vars.c_1[i] = d;
+    }
+
+    // Calculate c_2, c_3, c_4, c_5  //
+    double h = 1.0 / this->_total;
+
+    for (int i = 0; i < this->_total; ++i)
+    {
+        // n_i for c_2, c_3 and c_4, c_5
+        double a = this->_v_s[i] * this->_a_ts[i];
+        double n_t = 0.0;
+        if (a >= 0)
+        {
+            n_t = 1.0;
+        }
+
+        double b = this->_v_s[i] + 2 * h * this->_a_ts[i] * n_t;
+        double c = this->_v_s[i] - 2 * h * this->_a_ts[i] * (1 - n_t);
+
+        // c_2, c_3
+        this->Vars.c_2[i] = b / c;
+        this->Vars.c_3[i] = fabs(2.0 * h * lim.at_max / c);
+
+        // c_4, c_5
+        this->Vars.c_4[i] = c / b;
+        this->Vars.c_5[i] = fabs(2.0 * h * lim.at_max / b);
+
+        // n_i for c_6, c_7 and c_8, c_9
+        a = this->_w_s[i] * this->_a_ws[i];
+        double n_w = 0.0;
+        if (a >= 0)
+        {
+            n_w = 1.0;
+        }
+
+        double d = this->_w_s[i] + 2 * h * this->_a_ws[i] * n_w;
+        double e = this->_w_s[i] - 2 * h * this->_a_ws[i] * (1 - n_w);
+
+        // c_6, c_7
+        this->Vars.c_6[i] = d / e;
+        this->Vars.c_7[i] = fabs(2.0 * h * lim.aw_max / e);
+
+        // c_8, c_9
+        this->Vars.c_8[i] = e / d;
+        this->Vars.c_9[i] = fabs(2.0 * h * lim.aw_max / d);
+    }
+
+    // c_10 ~ c_15
+    for (int i = 0; i < this->_total-1; ++i)
+    {
+        double a = this->_v_s[i] * this->_a_ts[i];
+        double ap1 = this->_v_s[i+1] * this->_a_ts[i+1];
+        double n_t = 0.0;
+        double n_tp1 = 0.0;
+        if (a >= 0)
+        {
+            n_t = 1.0;
+        }
+        if (ap1 >= 0)
+        {
+            n_tp1 = 1.0;
+        }
+
+        this->Vars.c_10[i] = 2.0 * h *  this->_a_ts[i] *  n_t  +  this->_v_s[i] - 2.0 * h * this->_a_ts[i+1] * (1-n_tp1) + this->_v_s[i+1];
+        this->Vars.c_11[i] = -2.0 * h * this->_a_ts[i+1] *  n_tp1 - this->_v_s[i+1];
+        this->Vars.c_12[i] = 2.0 * h *  this->_a_ts[i] * (1-n_t) -  this->_v_s[i];
+
+
+        double c = this->_v_s[i] * this->_a_ts[i];
+        double cp1 = this->_v_s[i+1] * this->_a_ts[i+1];
+        double n_w = 0.0;
+        double n_wp1 = 0.0;
+        if (c >= 0)
+        {
+            n_w = 1.0;
+        }
+        if (cp1 >= 0)
+        {
+            n_wp1 = 1.0;
+        }
+
+        this->Vars.c_13[i] = 2.0 * h * this->_a_ws[i] * n_w + this->_w_s[i] - 2.0 * h * this->_a_ws[i+1] * (1-n_wp1) + this->_w_s[i+1];
+        this->Vars.c_14[i] = -2.0 * h * this->_a_ws[i+1] * n_wp1 - this->_w_s[i+1];
+        this->Vars.c_15[i] = 2.0 * h * this->_a_ws[i] * (1-n_w) - this->_w_s[i];
+    }
+
+    this->Vars = this->Vars;
+
+
+
+    /*
+        LP OPTIMIZATION FOR TOTP
+    */
+    try
+    {
+        // Create an environment
+        GRBEnv env = GRBEnv(true);
+        //禁止打印输出信息
+        // env.set("OutputFlag", "0");
+
+        env.start();
+
+        // Create an empty model
+        GRBModel model = GRBModel(env);
+
+        model.getEnv().set(GRB_IntParam_Threads, 12);
+
+        int N = 2 * this->_total + 1;
+        // Number of varibles [0]-[this->_total]是 a_i
+        // [this->_total+1]-[2*this->_total]是 b_i
+
+        // 创建变量
+        std::vector<GRBVar> vars(N);
+        for (int i = 0; i < N; ++i)
+        {
+            if (i < this->_total + 1)
+            {
+                // 对于前M个变量，范围是大于0
+                vars[i] = model.addVar(0.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);
+            }
+            else
+            {
+                // 对于其他变量，范围是任意实数
+                vars[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0.0, GRB_CONTINUOUS);
+            }
+        }
+
+        // Set cost function
+        GRBLinExpr objective = 0.0;
+        // max a_i
+        for (int i = 0; i < this->_total + 1; ++i)
+        {
+            objective += vars[i];
+        }
+
+        model.setObjective(objective, GRB_MAXIMIZE);
+
+        // Add constraints a_i < c_1 for i = 0,...,this->_total
+        for (int i = 0; i < this->_total + 1; ++i)
+        {
+            model.addConstr(vars[i] <= this->Vars.c_1[i]);
+        }
+
+        // Add LP constraints for a_i and a_{i+1} for i = 0,...,this->_total-1
+        for (int i = 0; i < this->_total; ++i)
+        {
+            /*a_t*/
+            // Add constraints a_i < c_2 * a_{i+1} + c_3 for i = 0,...,this->_total-1
+            model.addConstr(vars[i] <= this->Vars.c_2[i] * vars[i + 1] + this->Vars.c_3[i]);
+
+            // Add constraints a_{i+1} < c_4 * a_{i} + c_5 for i = 0,...,this->_total-1
+            model.addConstr(vars[i + 1] <= this->Vars.c_4[i] * vars[i] + this->Vars.c_5[i]);
+
+            /*a_w*/
+            // Add constraints a_i < c_6 * a_{i+1} + c_7 for i = 0,...,this->_total-1
+            model.addConstr(vars[i] <= this->Vars.c_6[i] * vars[i + 1] + this->Vars.c_7[i]);
+
+            // Add constraints a_{i+1} < c_8 * a_{i} + c_9 for i = 0,...,this->_total-1
+            model.addConstr(vars[i + 1] <= this->Vars.c_8[i] * vars[i] + this->Vars.c_9[i]);
+
+
+            // Add constraints b_i = (a_{i+1}-a_i)/(2*h)
+            model.addConstr(vars[this->_total + 1 + i] == (vars[i + 1] - vars[i]) / (2.0 / this->_total));
+
+            // // Add constraints c_i = fabs(b_i)
+            // model.addConstr(vars[2*this->_total + 1 + i] >= vars[this->_total + 1 + i]);
+            // model.addConstr(vars[2*this->_total + 1 + i] >= -vars[this->_total + 1 + i]);
+        }
+
+        // Add constraints a_0 = 0 and a_{this->_total} = 0
+        model.addConstr(vars[0] == 0);
+        model.addConstr(vars[this->_total] == 0);
+        // Add constraints b_0 = 0 and b_{this->_total-1} = 0
+        model.addConstr(vars[this->_total + 1] == 0);
+        model.addConstr(vars[2 * this->_total] == 0);
+
+
+        double lim_dif = 0.1;
+        double h = 1.0 / this->_total;
+
+        for (int i = 0; i < this->_total-2; ++i)
+        {
+            model.addConstr( this->Vars.c_10[i] * vars[i+1]  + this->Vars.c_11[i] * vars[i+2] + this->Vars.c_12[i] * vars[i] <= 2.0 * h * lim_dif );
+            model.addConstr( this->Vars.c_10[i] * vars[i+1]  + this->Vars.c_11[i] * vars[i+2] + this->Vars.c_12[i] * vars[i] >= -2.0 * h * lim_dif );
+            model.addConstr( this->Vars.c_13[i] * vars[i+1]  + this->Vars.c_14[i] * vars[i+2] + this->Vars.c_15[i] * vars[i] <= 2.0 * h * lim_dif) ;
+            model.addConstr( this->Vars.c_13[i] * vars[i+1]  + this->Vars.c_14[i] * vars[i+2] + this->Vars.c_15[i] * vars[i] >= -2.0 * h * lim_dif) ;
+
+        }
+
+        // 优化模型
+        model.optimize();
+
+        // 将结果分别存入a_i和b_i
+        for (int i = 0; i < this->_total + 1; ++i)
+        {
+            // this->_a_i[i] = vars[i].get(GRB_DoubleAttr_X);
+            // this->_a_i[i] = this->_a_i[i];
+
+            this->_a_i[i] = vars[i].get(GRB_DoubleAttr_X);
+        }
+        for (int i = 0; i < this->_total; ++i)
+        {
+            // this->_b_i[i] = vars[this->_total + 1 + i].get(GRB_DoubleAttr_X);
+            // this->_b_i[i] = this->_b_i[i];
+
+            this->_b_i[i] = vars[this->_total + 1 + i].get(GRB_DoubleAttr_X);
+        }
+    }
+    catch (GRBException& e) {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        ROS_INFO("Error: TOTP for first optimization failed");
+    }
+
+
+
+
+    /*
+        Calculate T_i and Get duration
+    */
+    // Calculate T_i
+    for (int i = 0; i < this->_total; ++i)
+    {
+        double a = sqrt(this->_a_i[i]) + sqrt(this->_a_i[i + 1]);
+        if (a == 0.0)
+        {
+            this->_T_i[i] = 0.0;
+        }
+        else
+        {
+            this->_T_i[i] = 2.0 * h / a;
+        }
+    }
+
+    // Calculate T_total
+    // this->_T_total[0] = 0;
+    this->_duration[0] = 0;
+    for (int i = 0; i < this->_total; ++i)
+    {
+        // this->_T_total[i + 1] = this->_T_total[i] + this->_T_i[i];
+        this->_duration[i+1] = this->_duration[i] + this->_T_i[i];
+    }
+
+
 
 }
+

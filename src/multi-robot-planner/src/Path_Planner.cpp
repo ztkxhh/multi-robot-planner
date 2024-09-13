@@ -41,7 +41,7 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
     }
     else
     {
-        Mergecurve();
+        TOTP(nh);
     }
 }
 
@@ -1185,7 +1185,26 @@ void Path_Planner::Mergecurve()
 }
 
 
+void Path_Planner::TOTP(ros::NodeHandle &nh)
+{
+    Mergecurve();
 
+    Limits lim; // limits -- vm, wm, atm, awm, arm, cem
+    nh.param("vm", lim.v_max, 1.0);
+    nh.param("wm", lim.w_max, 1.0);
+    nh.param("atm", lim.at_max, 5.0);
+    nh.param("awm", lim.aw_max, 5.0);
+    nh.param("arm", lim.ar_max, 5.0);
+    nh.param("cem", lim.cem, 0.5);
+
+    for (size_t i = 0; i < merged_curves.size(); ++i)
+    {
+        merged_curves[i]->TOTP(lim);
+    }
+
+
+
+}
 
 
 
@@ -1304,22 +1323,43 @@ void Path_Planner::plotting()
     //     plt::ylabel("y");
     // }
 
-    // _a_rs
+    // // _a_rs
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &a_rs = merged_curves[i]->_a_rs;
+    //     // 提取起点和终点
+    //     const auto &start = a_rs.front();
+    //     const auto &end = a_rs.back();
+    //     // 绘制曲线
+    //     plt::plot(a_rs);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({a_rs.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " a_rs");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+  // c_6 c_7 c_8 c_9you wenti
+    // Vars.c1
     for (size_t i = 0; i < merged_curves.size(); ++i)
     {
         plt::figure(i);
         // 获取曲线的所有点
-        const auto &a_rs = merged_curves[i]->_a_rs;
+        const auto &c1 = merged_curves[i]->Vars.c_15;
         // 提取起点和终点
-        const auto &start = a_rs.front();
-        const auto &end = a_rs.back();
+        const auto &start = c1.front();
+        const auto &end = c1.back();
         // 绘制曲线
-        plt::plot(a_rs);
+        plt::plot(c1);
         // 标记起点和终点
         plt::plot({0}, {start}, "r*"); // 红色星表示起点
-        plt::plot({a_rs.size() - 1}, {end}, "k*"); // 黑色星表示终点
+        plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
 
-        plt::title("Robot " + std::to_string(i + 1) + " a_rs");
+        plt::title("Robot " + std::to_string(i + 1) + " c1");
         plt::xlabel("x");
         plt::ylabel("y");
     }
