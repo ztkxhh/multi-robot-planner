@@ -37,14 +37,10 @@ static vector<double> Binomial(const int &n)
 }
 
 
-Beziercurve::Beziercurve(const vector<pair<double, double>> &c_points, const int &total, const double &T_s)
+Beziercurve::Beziercurve(const int &total)
 {
-    this->_control_points = c_points;              // control points
-    this->_orn = this->_control_points.size() - 1; // order of curve
     this->_total = total;                          // total points on curve
-    this->_T_s = T_s;                              // time for each segement(1/frequence)
     this->_points.reserve(total + 1);              // points on curve from p_0 to p_N
-    this->_ds.reserve(total);                      // arc_length for each segement
     this->_v_s.reserve(total + 1);                 // velocity
     this->_w_s.reserve(total + 1);                 // angular velocity
     this->_a_ws.reserve(total + 1);                // angular acceleration
@@ -61,14 +57,17 @@ Beziercurve::Beziercurve(const vector<pair<double, double>> &c_points, const int
     this->_a_i.resize(total + 1); // a_i
     this->_b_i.resize(total);     // b_i
 
-    this->_duration.resize(total + 1);
-
-    this-> B_pts();
-    this->Atrributes();
+    this->_duration.resize(total + 1); // duration until i-th segement
 }
 
-Beziercurve::~Beziercurve()
+
+void Beziercurve::get_params(const vector<pair<double, double>> &c_points, const double &T_s)
 {
+    this->_control_points = c_points;              // control points
+    this->_orn = this->_control_points.size() - 1; // order of curve
+    this->_T_s = T_s;                              // time for each segement(1/frequence)
+
+    this->Atrributes();
 }
 
 pair<double, double> Beziercurve::B_pt(double &s) // P(s)
@@ -191,6 +190,7 @@ double Beziercurve::get_ds(double &s)
 
 void Beziercurve::Atrributes()
 {
+    this-> B_pts();
 
     double s_step = 1.0 / this->_total;
     for (int j = 0; j <= this->_total; ++j)
@@ -211,14 +211,6 @@ void Beziercurve::Atrributes()
     }
 
 
-    // 计算每个segement的arc_length
-    this->_arc_length[0] = 0.0;
-    // b的首个元素为0，并计算其余元素
-    for (int i = 1; i <= this->_total; ++i)
-    {
-        this->_arc_length[i] = this->_arc_length[i - 1] + this->_ds[i - 1];
-        // cout << this->_arc_length[i] << endl;
-    }
 
     // // 展示起点和终点的动态属性
     // ROS_INFO(" ");

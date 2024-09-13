@@ -37,19 +37,19 @@ private:
     std::pair<double, double> thir_s(double &s);
 
 public:
+
+   
     int _total;
     double _T_s; // 1 / frenquence
 
-    std::vector<std::pair<double, double>> _points; // points on curve from p_0 to p_N
-
+    // parameters for TOTP
+    MultiVars Vars; // variables for optimaztion
     std::vector<double>_duration; // duration until i-th segement
-
     std::vector<double> _a_i; // a_i
     std::vector<double> _b_i; // b_i
 
-
-    std::vector<double> _ds;                        // arc_length for each segement
-
+    // parameters for Bezier curve path
+    std::vector<std::pair<double, double>> _points; // points on curve from p_0 to p_N
     std::vector<double> _v_s;        // velocity
     std::vector<double> _w_s;        // angular velocity
     std::vector<double> _a_ws;       // angular acceleration
@@ -59,16 +59,17 @@ public:
     std::vector<double> _arc_length; // accumulated arc_length until i
     std::vector<double> _theta;       // angle at each point
 
+    // parameters for Time allocation, but calculate in Beziercurve.cpp
     std::vector<double>_x_fir;
     std::vector<double>_y_fir;
 
-    MultiVars Vars; // variables for optimaztion
 
 
+    Beziercurve(const int &total);
+    ~Beziercurve()= default;
 
-    Beziercurve(const std::vector<std::pair<double, double>> &c_points, const int &total, const double& T_s);
+    void get_params(const std::vector<std::pair<double, double>> &c_points, const double &T_s);
 
-    ~Beziercurve();
 
     // Function to compute Bezier curve points from s
     std::pair<double, double> B_pt(double &s); // P(s)

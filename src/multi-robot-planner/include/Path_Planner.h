@@ -23,6 +23,8 @@
 #include "bezier_base.h"
 #include "Beziercurve.h"
 
+
+
 struct Node {
     int x, y;
     int g, h;
@@ -47,20 +49,33 @@ public:
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
     void doubleMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+    bool mapReceived() const { return map_received_; }
+    bool doubleMapReceived() const { return double_map_received_; }
 
-    bool planPaths();
-
-    const std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& getCorridors(size_t robot_index) const;
     const std::vector<std::pair<int, int>>& getStartPositions() const;
     const std::vector<std::pair<int, int>>& getGoalPositions() const;
 
     std::pair<int, int> getStart(size_t robot_index) const;
     std::pair<int, int> getGoal(size_t robot_index) const;
 
-    bool mapReceived() const { return map_received_; }
-    bool doubleMapReceived() const { return double_map_received_; }
-
     void publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub, ros::Publisher& path_pub);
+
+    std::vector <std::shared_ptr<Beziercurve>> merged_curves;
+
+    void plotting();
+
+
+private:
+    int manhattanDistance(int x1, int y1, int x2, int y2);
+
+    bool planPaths();
+    std::vector<std::shared_ptr<Node>> astar(const nav_msgs::OccupancyGrid& map, int start_x, int start_y, int goal_x, int goal_y, int max_steps);
+    std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>> generateSafeCorridor(const nav_msgs::OccupancyGrid& map, const std::vector<std::shared_ptr<Node>>& path);
+    bool areCorridorsConnected(const std::vector<int>& corridor1, const std::vector<int>& corridor2);
+    void simplifyCorridors(std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& corridors);
+    void removeRedundantCorridors(std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& corridors);
+    void inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGrid& map);
+    const std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& getCorridors(size_t robot_index) const;
 
     int MultiRobotTraGen(
     const std::vector<std::vector< std::vector<int>>>  & corridors,
@@ -76,23 +91,9 @@ public:
     std::vector<std::vector< std::vector<std::pair<double,double>>>> all_control_points;
     std::vector<std::vector< std::vector<std::pair<double,double>>>> getControlPoints(){ return all_control_points; }
 
-    std::vector<std::vector<std::shared_ptr<Beziercurve>>>multiple_curves;
-
-    std::vector <std::shared_ptr<Beziercurve>> merged_curves;
-
     bool GenerationCurves(ros::NodeHandle &nh);
+    void Mergecurve();
 
-    Gen_Starts_Goals planner_;
-
-
-private:
-    int manhattanDistance(int x1, int y1, int x2, int y2);
-    std::vector<std::shared_ptr<Node>> astar(const nav_msgs::OccupancyGrid& map, int start_x, int start_y, int goal_x, int goal_y, int max_steps);
-    std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>> generateSafeCorridor(const nav_msgs::OccupancyGrid& map, const std::vector<std::shared_ptr<Node>>& path);
-    bool areCorridorsConnected(const std::vector<int>& corridor1, const std::vector<int>& corridor2);
-    void simplifyCorridors(std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& corridors);
-    void removeRedundantCorridors(std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>& corridors);
-    void inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGrid& map);
 
     ros::Subscriber map_sub_;
     ros::Subscriber double_map_sub_;
@@ -106,7 +107,10 @@ private:
 
     int inflation_radius_;
 
+    Gen_Starts_Goals planner_;
     std::vector<std::vector<std::pair<std::shared_ptr<Node>, std::vector<int>>>> robot_corridors_;
+    std::vector<std::vector<std::shared_ptr<Beziercurve>>>multiple_curves;
+
 };
 
 #endif // PATH_PLANNER_H

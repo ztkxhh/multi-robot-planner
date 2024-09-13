@@ -5,6 +5,9 @@
 #include "Path_Planner.h"
 using namespace std;
 
+#include "matplotlibcpp.h"
+namespace plt = matplotlibcpp;
+
 Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
 {
     double robot_radius;
@@ -31,10 +34,14 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
         // ROS_INFO("Calculated inflation_radius_: %d", inflation_radius_);
     }
 
-    // Generate curves
+    // Generate multi curve segments
     if (!GenerationCurves(nh))
     {
         ROS_ERROR("Failed to generate curves.");
+    }
+    else
+    {
+        Mergecurve();
     }
 }
 
@@ -403,10 +410,10 @@ void Path_Planner::simplifyCorridors(std::vector<std::pair<std::shared_ptr<Node>
             continue;
         }
 
-        // curr_corridor[0] = std::max(curr_corridor[0], 0);
-        // curr_corridor[1] = std::min(curr_corridor[1], static_cast<int>(map_data_.info.width - 1));
-        // curr_corridor[2] = std::max(curr_corridor[2], 0);
-        // curr_corridor[3] = std::min(curr_corridor[3], static_cast<int>(map_data_.info.height - 1));
+        curr_corridor[0] = std::max(curr_corridor[0], 0);
+        curr_corridor[1] = std::min(curr_corridor[1], static_cast<int>(map_data_.info.width - 1));
+        curr_corridor[2] = std::max(curr_corridor[2], 0);
+        curr_corridor[3] = std::min(curr_corridor[3], static_cast<int>(map_data_.info.height - 1));
 
         simplified_corridors.emplace_back(corridors[i]);
     }
@@ -690,256 +697,286 @@ int Path_Planner::MultiRobotTraGen(
         segments_nums[i] = corridors[i].size(); // 每个机器人的段数量
     }
 
-
-    // Create an Gurobi environment
-    GRBEnv env = GRBEnv(true);
-
-    // 禁止打印输出信息
-    //  env.set("OutputFlag", "0");
-
-    env.start();
-
-    // Create an empty model
-    GRBModel model = GRBModel(env);
-
-    // // // Set time limit and MIP gap
-    // // model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
-    // model.getEnv().set(GRB_DoubleParam_MIPGap, 0.000001);
-    // model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.000001);
-
-    // model.getEnv().set(GRB_IntParam_Presolve, 0);
-
-    model.getEnv().set(GRB_IntParam_Threads, 12);
-
-    int total_cp_num = 0; // 总的控制点数量
-
-    for (int i = 0; i < n; i++)
+    try
     {
-        int robot_cp_num = segments_nums[i] * n_poly * 2; // 每个机器人有 m_i 段，每段有 n_poly 控制点，每个控制点有 x 和 y 两个维度
-        total_cp_num += robot_cp_num;
-    }
 
-    // Create variables
-    std::vector<GRBVar> vars(total_cp_num); // 控制点变量
+        // Create an Gurobi environment
+        GRBEnv env = GRBEnv(true);
 
-    int var_idx = 0; // 变量索引
-    // 设置控制点变量的上下界
-    for (int i = 0; i < n; i++)
-    {
-        const auto &robot_corridors = corridors[i];
-        for (int seg = 0; seg < segments_nums[i]; seg++)
+        // 禁止打印输出信息
+         env.set("OutputFlag", "0");
+
+        env.start();
+
+        // Create an empty model
+        GRBModel model = GRBModel(env);
+
+        // // // Set time limit and MIP gap
+        // // model.getEnv().set(GRB_DoubleParam_TimeLimit, 60);
+        // model.getEnv().set(GRB_DoubleParam_MIPGap, 0.000001);
+        // model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 0.000001);
+
+        // model.getEnv().set(GRB_IntParam_Presolve, 0);
+
+        model.getEnv().set(GRB_IntParam_Threads, 12);
+
+        int total_cp_num = 0; // 总的控制点数量
+
+        for (int i = 0; i < n; i++)
         {
-            const auto &corridor = robot_corridors[seg];
-            for (int j = 0; j < n_poly; j++)
+            int robot_cp_num = segments_nums[i] * n_poly * 2; // 每个机器人有 m_i 段，每段有 n_poly 控制点，每个控制点有 x 和 y 两个维度
+            total_cp_num += robot_cp_num;
+        }
+
+        // Create variables
+        std::vector<GRBVar> vars(total_cp_num); // 控制点变量
+
+        int var_idx = 0; // 变量索引
+        // 设置控制点变量的上下界
+        for (int i = 0; i < n; i++)
+        {
+            const auto &robot_corridors = corridors[i];
+            for (int seg = 0; seg < segments_nums[i]; seg++)
             {
-                // x 方向的控制点上下界
-                vars[var_idx] = model.addVar(corridor[0], corridor[1], 0.0, GRB_CONTINUOUS);
-                // ROS_INFO("var_idx: %d, corridor[0]: %d, corridor[1]: %d", var_idx, corridor[0], corridor[1]);
-                var_idx++;
-                // y 方向的控制点上下界
-                vars[var_idx] = model.addVar(corridor[2], corridor[3], 0.0, GRB_CONTINUOUS);
-                // ROS_INFO("var_idx: %d, corridor[2]: %d, corridor[3]: %d", var_idx, corridor[2], corridor[3]);
-                var_idx++;
+                const auto &corridor = robot_corridors[seg];
+                for (int j = 0; j < n_poly; j++)
+                {
+                    // x 方向的控制点上下界
+                    //检查x方向的边界是否相等
+                    if (corridor[0] == corridor[1])
+                    {
+                        ROS_WARN("Robot %d, Segment %d, Control Point %d, x is same range: [%d, %d]", i, seg, j, corridor[0], corridor[1]);
+                    }
+                    vars[var_idx] = model.addVar(corridor[0], corridor[1], 0.0, GRB_CONTINUOUS);
+                    // ROS_INFO("var_idx: %d, corridor[0]: %d, corridor[1]: %d", var_idx, corridor[0], corridor[1]);
+                    var_idx++;
+
+                    // y 方向的控制点上下界
+                    //检查y方向的边界是否相等
+                    if (corridor[2] == corridor[3])
+                    {
+                        ROS_WARN("Robot %d, Segment %d, Control Point %d, y is same range: [%d, %d]", i, seg, j, corridor[2], corridor[3]);
+                    }
+                    vars[var_idx] = model.addVar(corridor[2], corridor[3], 0.0, GRB_CONTINUOUS);
+                    // ROS_INFO("var_idx: %d, corridor[2]: %d, corridor[3]: %d", var_idx, corridor[2], corridor[3]);
+                    var_idx++;
+                }
             }
         }
-    }
 
-    // set cost funtion,遍历每个机器人，遍历矩阵的每个元素，设置目标函数
-    GRBQuadExpr obj = 0.0;
-    for (int i = 0; i < n; i++)
-    { // 遍历每个机器人
-        int offset = 0;
-        for (int j = 0; j < i; j++)
-        {
-            offset += segments_nums[j] * n_poly * 2; // 索引偏移量，取决于之前机器人的所有控制点数量
-        }
+        // set cost funtion,遍历每个机器人，遍历矩阵的每个元素，设置目标函数
+        GRBQuadExpr obj = 0.0;
+        for (int i = 0; i < n; i++)
+        { // 遍历每个机器人
+            int offset = 0;
+            for (int j = 0; j < i; j++)
+            {
+                offset += segments_nums[j] * n_poly * 2; // 索引偏移量，取决于之前机器人的所有控制点数量
+            }
 
-        for (int seg = 0; seg < segments_nums[i]; seg++)
-        {                                             // 遍历每个段
-            int base_idx = offset + seg * n_poly * 2; // 当前段的控制点起始索引
+            for (int seg = 0; seg < segments_nums[i]; seg++)
+            {                                             // 遍历每个段
+                int base_idx = offset + seg * n_poly * 2; // 当前段的控制点起始索引
 
-            for (int p = 0; p < n_poly; p++)
-            { // 遍历当前段的所有控制点
-                for (int q = 0; q < n_poly; q++)
-                { // 遍历矩阵的所有元素
-                    for (int dim = 0; dim < 2; dim++)
-                    {                                       // x 和 y 方向
-                        int var_p = base_idx + p * 2 + dim; // 变量 p 的索引
-                        int var_q = base_idx + q * 2 + dim; // 变量 q 的索引
+                for (int p = 0; p < n_poly; p++)
+                { // 遍历当前段的所有控制点
+                    for (int q = 0; q < n_poly; q++)
+                    { // 遍历矩阵的所有元素
+                        for (int dim = 0; dim < 2; dim++)
+                        {                                       // x 和 y 方向
+                            int var_p = base_idx + p * 2 + dim; // 变量 p 的索引
+                            int var_q = base_idx + q * 2 + dim; // 变量 q 的索引
 
-                        // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
-                        // obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                            // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
+                            // obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
 
-                        obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                            obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                        }
                     }
                 }
             }
         }
-    }
 
-    model.setObjective(obj, GRB_MINIMIZE);
+        model.setObjective(obj, GRB_MINIMIZE);
 
-    // 添加起始位置和终止位置约束
-    for (int i = 0; i < n; i++)
-    {
-        // 计算当前机器人的偏移量（即它的变量在整个优化变量中的起始位置）
-        int robot_offset = 0;
-        for (int k = 0; k < i; k++)
-        {
-            robot_offset += segments_nums[k] * n_poly * 2; // 计算当前机器人起始变量索引的偏移量
-        }
-
-        // 起始位置约束：设置第一个段的第一个控制点
-        int start_idx_x = robot_offset;     // 第一个控制点的x坐标索引
-        int start_idx_y = robot_offset + 1; // 第一个控制点的y坐标索引
-
-        model.addConstr(vars[start_idx_x] == start_positions[i].first);
-        model.addConstr(vars[start_idx_y] == start_positions[i].second);
-
-        // 终止位置约束：设置最后一个段的最后一个控制点
-        int last_seg_start_idx = robot_offset + (segments_nums[i] - 1) * n_poly * 2; // 计算最后一个段的起始变量索引
-        int end_idx_x = last_seg_start_idx + (n_poly - 1) * 2;                       // 最后一个控制点的x坐标索引
-        int end_idx_y = last_seg_start_idx + (n_poly - 1) * 2 + 1;                   // 最后一个控制点的y坐标索引
-
-        model.addConstr(vars[end_idx_x] == goal_positions[i].first);
-        model.addConstr(vars[end_idx_y] == goal_positions[i].second);
-    }
-
-    // 添加轨迹段间的连续性约束
-    for (int i = 0; i < n; i++)
-    {                   // 遍历每个机器人
-        int offset = 0; // 记录当前机器人的控制点起始索引
-        for (int j = 0; j < i; j++)
-        {
-            offset += segments_nums[j] * n_poly * 2; // 计算偏移量
-        }
-
-        for (int seg = 0; seg < segments_nums[i] - 1; seg++)
-        {                                                        // 遍历每个段
-            int base_idx_current = offset + seg * n_poly * 2;    // 当前段的起始索引
-            int base_idx_next = offset + (seg + 1) * n_poly * 2; // 下一段的起始索引
-
-            for (int dim = 0; dim < 2; dim++)
-            { // x 和 y 方向
-                // 位置连续性：P_6^i = P_1^{i+1}
-                model.addConstr(vars[base_idx_current + 5 * 2 + dim] == vars[base_idx_next + dim]);
-
-                // 速度连续性：(P_6^i - P_5^i) * 5 = (P_2^{i+1} - P_1^{i+1}) * 5
-                model.addConstr(vars[base_idx_current + 5 * 2 + dim] - vars[base_idx_current + 4 * 2 + dim] == vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
-
-                // 加速度连续性：(P_6^i - 2P_5^i + P_4^i) * 20 = (P_3^{i+1} - 2P_2^{i+1} + P_1^{i+1}) * 20
-                model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 2 * vars[base_idx_current + 4 * 2 + dim] + vars[base_idx_current + 3 * 2 + dim] == vars[base_idx_next + 2 * 2 + dim] - 2 * vars[base_idx_next + 1 * 2 + dim] + vars[base_idx_next + 0 * 2 + dim]);
-
-                // 加加速度连续性：(P_6^i - 3P_5^i + 3P_4^i - P_3^i) * 60 = (P_4^{i+1} - 3P_3^{i+1} + 3P_2^{i+1} - P_1^{i+1}) * 60
-                model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 3 * vars[base_idx_current + 4 * 2 + dim] + 3 * vars[base_idx_current + 3 * 2 + dim] - vars[base_idx_current + 2 * 2 + dim] == vars[base_idx_next + 3 * 2 + dim] - 3 * vars[base_idx_next + 2 * 2 + dim] + 3 * vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
-            }
-        }
-    }
-
-    // 添加起始状态与终止状态的速度和加速度约束，即起始状态x,y的速度和加速度为0，终止状态的速度和加速度为0
-    // 起始状态的速度和加速度约束分别为：P_2^i - P_1^i = 0, P_3^i - 2P_2^i + P_1^i = 0
-    // 终止状态的速度和加速度约束分别为：P_6^i - P_5^i = 0, P_6^i - 2P_5^i + P_4^i = 0
-    for (int i = 0; i < n; i++)
-    {
-        int offset = 0;
-        for (int j = 0; j < i; j++)
-        {
-            offset += segments_nums[j] * n_poly * 2;
-        }
-        // x 方向
-        int base_idx = offset;
-        model.addConstr(vars[base_idx + 1 * 2] == vars[base_idx + 0 * 2]);
-        model.addConstr(vars[base_idx + 2 * 2] == 2 * vars[base_idx + 1 * 2] - vars[base_idx + 0 * 2]);
-
-        int last_seg_start_idx = offset + (segments_nums[i] - 1) * n_poly * 2;
-        model.addConstr(vars[last_seg_start_idx + 5 * 2] == vars[last_seg_start_idx + 4 * 2]);
-        model.addConstr(vars[last_seg_start_idx + 5 * 2] == 2 * vars[last_seg_start_idx + 4 * 2] - vars[last_seg_start_idx + 3 * 2]);
-
-        // y 方向
-        base_idx = offset + 1;
-        model.addConstr(vars[base_idx + 1 * 2] == vars[base_idx + 0 * 2]);
-        model.addConstr(vars[base_idx + 2 * 2] == 2 * vars[base_idx + 1 * 2] - vars[base_idx + 0 * 2]);
-
-        last_seg_start_idx = offset + (segments_nums[i] - 1) * n_poly * 2 + 1;
-        model.addConstr(vars[last_seg_start_idx + 5 * 2] == vars[last_seg_start_idx + 4 * 2]);
-        model.addConstr(vars[last_seg_start_idx + 5 * 2] == 2 * vars[last_seg_start_idx + 4 * 2] - vars[last_seg_start_idx + 3 * 2]);
-    }
-
-    // 添加机器人之间的距离约束(只限于首段)
-    // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
-    double min_threshold = 4.0 * inflation_radius_ * inflation_radius_; // 距离的平方
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = i + 1; j < n; j++)
-        {
-            if (std::hypot(start_positions[i].first - start_positions[j].first, start_positions[i].second - start_positions[j].second) <= 2.5 * inflation_radius_)
-            {
-
-                ROS_INFO("Robot %d and Robot %d are too close !!!!!!!!!!!!!!", i, j);
-
-                int offset_i = 0;
-                for (int k = 0; k < i; k++)
-                {
-                    offset_i += segments_nums[k] * n_poly * 2;
-                }
-
-                int offset_j = 0;
-                for (int k = 0; k < j; k++)
-                {
-                    offset_j += segments_nums[k] * n_poly * 2;
-                }
-
-                int base_idx_i = offset_i;
-                int base_idx_j = offset_j;
-
-                for (int p = 0; p < n_poly; p++)
-                {
-                    int var_idx_i = base_idx_i + p * 2;
-                    int var_idx_j = base_idx_j + p * 2;
-
-                    model.addQConstr(vars[var_idx_i] * vars[var_idx_i] - 2 * vars[var_idx_i] * vars[var_idx_j] + vars[var_idx_j] * vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1] - 2 * vars[var_idx_i + 1] * vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1] >= min_threshold);
-                }
-            }
-        }
-    }
-
-    // Optimize model
-    model.optimize();
-
-    // Get the optimization result
-    if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
-    {
-        // Get the optimal value of the objective function
-        double obj_val = model.get(GRB_DoubleAttr_ObjVal);
-        // ROS_INFO("Optimal objective: %.4f", obj_val);
-
-        // Get the optimal value of the decision variables
-        all_control_points.resize(n);
+        // 添加起始位置和终止位置约束
         for (int i = 0; i < n; i++)
         {
-            all_control_points[i].resize(segments_nums[i]);
+            // 计算当前机器人的偏移量（即它的变量在整个优化变量中的起始位置）
+            int robot_offset = 0;
+            for (int k = 0; k < i; k++)
+            {
+                robot_offset += segments_nums[k] * n_poly * 2; // 计算当前机器人起始变量索引的偏移量
+            }
+
+            // 起始位置约束：设置第一个段的第一个控制点
+            int start_idx_x = robot_offset;     // 第一个控制点的x坐标索引
+            int start_idx_y = robot_offset + 1; // 第一个控制点的y坐标索引
+
+            model.addConstr(vars[start_idx_x] == start_positions[i].first);
+            model.addConstr(vars[start_idx_y] == start_positions[i].second);
+
+            // 终止位置约束：设置最后一个段的最后一个控制点
+            int last_seg_start_idx = robot_offset + (segments_nums[i] - 1) * n_poly * 2; // 计算最后一个段的起始变量索引
+            int end_idx_x = last_seg_start_idx + (n_poly - 1) * 2;                       // 最后一个控制点的x坐标索引
+            int end_idx_y = last_seg_start_idx + (n_poly - 1) * 2 + 1;                   // 最后一个控制点的y坐标索引
+
+            model.addConstr(vars[end_idx_x] == goal_positions[i].first);
+            model.addConstr(vars[end_idx_y] == goal_positions[i].second);
+        }
+
+        // 添加轨迹段间的连续性约束
+        for (int i = 0; i < n; i++)
+        {                   // 遍历每个机器人
+            int offset = 0; // 记录当前机器人的控制点起始索引
+            for (int j = 0; j < i; j++)
+            {
+                offset += segments_nums[j] * n_poly * 2; // 计算偏移量
+            }
+
+            for (int seg = 0; seg < segments_nums[i] - 1; seg++)
+            {                                                        // 遍历每个段
+                int base_idx_current = offset + seg * n_poly * 2;    // 当前段的起始索引
+                int base_idx_next = offset + (seg + 1) * n_poly * 2; // 下一段的起始索引
+
+                for (int dim = 0; dim < 2; dim++)
+                { // x 和 y 方向
+                    // 位置连续性：P_6^i = P_1^{i+1}
+                    model.addConstr(vars[base_idx_current + 5 * 2 + dim] == vars[base_idx_next + dim]);
+
+                    // 速度连续性：(P_6^i - P_5^i) * 5 = (P_2^{i+1} - P_1^{i+1}) * 5
+                    model.addConstr(vars[base_idx_current + 5 * 2 + dim] - vars[base_idx_current + 4 * 2 + dim] == vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
+
+                    // 加速度连续性：(P_6^i - 2P_5^i + P_4^i) * 20 = (P_3^{i+1} - 2P_2^{i+1} + P_1^{i+1}) * 20
+                    model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 2 * vars[base_idx_current + 4 * 2 + dim] + vars[base_idx_current + 3 * 2 + dim] == vars[base_idx_next + 2 * 2 + dim] - 2 * vars[base_idx_next + 1 * 2 + dim] + vars[base_idx_next + 0 * 2 + dim]);
+
+                    // 加加速度连续性：(P_6^i - 3P_5^i + 3P_4^i - P_3^i) * 60 = (P_4^{i+1} - 3P_3^{i+1} + 3P_2^{i+1} - P_1^{i+1}) * 60
+                    model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 3 * vars[base_idx_current + 4 * 2 + dim] + 3 * vars[base_idx_current + 3 * 2 + dim] - vars[base_idx_current + 2 * 2 + dim] == vars[base_idx_next + 3 * 2 + dim] - 3 * vars[base_idx_next + 2 * 2 + dim] + 3 * vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
+                }
+            }
+        }
+
+        // 添加起始状态与终止状态的速度和加速度约束，即起始状态x,y的速度和加速度为0，终止状态的速度和加速度为0
+        // 起始状态的速度和加速度约束分别为：P_2^i - P_1^i = 0, P_3^i - 2P_2^i + P_1^i = 0
+        // 终止状态的速度和加速度约束分别为：P_6^i - P_5^i = 0, P_6^i - 2P_5^i + P_4^i = 0
+        for (int i = 0; i < n; i++)
+        {
             int offset = 0;
             for (int j = 0; j < i; j++)
             {
                 offset += segments_nums[j] * n_poly * 2;
             }
-            for (int seg = 0; seg < segments_nums[i]; seg++)
+            // x 方向
+            int base_idx = offset;
+            model.addConstr(vars[base_idx + 1 * 2] == vars[base_idx + 0 * 2]);
+            model.addConstr(vars[base_idx + 2 * 2] == 2 * vars[base_idx + 1 * 2] - vars[base_idx + 0 * 2]);
+
+            int last_seg_start_idx = offset + (segments_nums[i] - 1) * n_poly * 2;
+            model.addConstr(vars[last_seg_start_idx + 5 * 2] == vars[last_seg_start_idx + 4 * 2]);
+            model.addConstr(vars[last_seg_start_idx + 5 * 2] == 2 * vars[last_seg_start_idx + 4 * 2] - vars[last_seg_start_idx + 3 * 2]);
+
+            // y 方向
+            base_idx = offset + 1;
+            model.addConstr(vars[base_idx + 1 * 2] == vars[base_idx + 0 * 2]);
+            model.addConstr(vars[base_idx + 2 * 2] == 2 * vars[base_idx + 1 * 2] - vars[base_idx + 0 * 2]);
+
+            last_seg_start_idx = offset + (segments_nums[i] - 1) * n_poly * 2 + 1;
+            model.addConstr(vars[last_seg_start_idx + 5 * 2] == vars[last_seg_start_idx + 4 * 2]);
+            model.addConstr(vars[last_seg_start_idx + 5 * 2] == 2 * vars[last_seg_start_idx + 4 * 2] - vars[last_seg_start_idx + 3 * 2]);
+        }
+
+        // 添加机器人之间的距离约束(只限于首段)
+        // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
+        double min_threshold = 4.0 * inflation_radius_ * inflation_radius_; // 距离的平方
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = i + 1; j < n; j++)
             {
-                all_control_points[i][seg].resize(n_poly);
-                for (int p = 0; p < n_poly; p++)
+                if (std::hypot(start_positions[i].first - start_positions[j].first, start_positions[i].second - start_positions[j].second) <= 2.5 * inflation_radius_)
                 {
-                    all_control_points[i][seg][p].first = vars[offset + seg * n_poly * 2 + p * 2].get(GRB_DoubleAttr_X);
-                    all_control_points[i][seg][p].second = vars[offset + seg * n_poly * 2 + p * 2 + 1].get(GRB_DoubleAttr_X);
+
+                    ROS_INFO("Robot %d and Robot %d are too close !", i, j);
+
+                    int offset_i = 0;
+                    for (int k = 0; k < i; k++)
+                    {
+                        offset_i += segments_nums[k] * n_poly * 2;
+                    }
+
+                    int offset_j = 0;
+                    for (int k = 0; k < j; k++)
+                    {
+                        offset_j += segments_nums[k] * n_poly * 2;
+                    }
+
+                    int base_idx_i = offset_i;
+                    int base_idx_j = offset_j;
+
+                    for (int p = 0; p < n_poly; p++)
+                    {
+                        int var_idx_i = base_idx_i + p * 2;
+                        int var_idx_j = base_idx_j + p * 2;
+
+                        model.addQConstr(vars[var_idx_i] * vars[var_idx_i] - 2 * vars[var_idx_i] * vars[var_idx_j] + vars[var_idx_j] * vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1] - 2 * vars[var_idx_i + 1] * vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1] >= min_threshold);
+                    }
                 }
             }
         }
 
-        return 1; // 成功
+        // Optimize model
+        model.optimize();
+
+        // ROS_INFO("Model status: %d", model.get(GRB_IntAttr_Status));
+
+        if (model.get(GRB_IntAttr_Status) == GRB_INFEASIBLE) {
+            ROS_INFO( "The model is infeasible, calculating IIS");
+
+            // 计算 IIS
+            model.computeIIS();
+
+            // 输出 IIS
+            model.write("/home/zt/multi-robot-planner/src/multi-robot-planner/launch/model.ilp");
+        }
+
+        // Get the optimization result
+        if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL)
+        {
+            // Get the optimal value of the objective function
+            double obj_val = model.get(GRB_DoubleAttr_ObjVal);
+            // ROS_INFO("Optimal objective: %.4f", obj_val);
+
+            // Get the optimal value of the decision variables
+            all_control_points.resize(n);
+            for (int i = 0; i < n; i++)
+            {
+                all_control_points[i].resize(segments_nums[i]);
+                int offset = 0;
+                for (int j = 0; j < i; j++)
+                {
+                    offset += segments_nums[j] * n_poly * 2;
+                }
+                for (int seg = 0; seg < segments_nums[i]; seg++)
+                {
+                    all_control_points[i][seg].resize(n_poly);
+                    for (int p = 0; p < n_poly; p++)
+                    {
+                        all_control_points[i][seg][p].first = vars[offset + seg * n_poly * 2 + p * 2].get(GRB_DoubleAttr_X);
+                        all_control_points[i][seg][p].second = vars[offset + seg * n_poly * 2 + p * 2 + 1].get(GRB_DoubleAttr_X);
+                    }
+                }
+            }
+
+            return 1; // 成功
+        }
     }
 
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return -1; // 失败
 
+    }
 
-    return -1; // 失败
 }
 
 bool Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
@@ -1075,7 +1112,8 @@ bool Path_Planner::GenerationCurves(ros::NodeHandle &nh)
                 control_points.emplace_back(all_control_points[i][j][k]);
             }
 
-            multiple_curves[i][j] = std::make_shared<Beziercurve>(control_points, points_num, T_s);
+            multiple_curves[i][j] = std::make_shared<Beziercurve>(points_num);
+            multiple_curves[i][j]->get_params(control_points, T_s);
         }
     }
 
@@ -1084,6 +1122,212 @@ bool Path_Planner::GenerationCurves(ros::NodeHandle &nh)
 
     return true;
 }
+
+
+
+void Path_Planner::Mergecurve()
+{
+
+        merged_curves.resize(multiple_curves.size());
+
+        for (size_t i = 0; i < multiple_curves.size(); ++i)
+        {
+            int total = 0;
+            int seg_num = multiple_curves[i].size();
+            for (size_t j = 0; j < seg_num; ++j)
+            {
+                total += multiple_curves[i][j]->_total;
+            }
+            total -= seg_num - 1;
+
+            merged_curves[i] = std::make_shared<Beziercurve>(total);
+            // 将multiple_curves中的曲线进行合并
+            for (size_t k = 0; k < seg_num; ++k)
+            {
+                if (k == 0)
+                {
+                    for (size_t m = 0; m <= multiple_curves[i][k]->_total; ++m)
+                    {
+                        merged_curves[i]->_points.push_back(multiple_curves[i][k]->_points[m]);
+                        merged_curves[i]->_v_s.push_back(multiple_curves[i][k]->_v_s[m]);
+                        merged_curves[i]->_w_s.push_back(multiple_curves[i][k]->_w_s[m]);
+                        merged_curves[i]->_a_ws.push_back(multiple_curves[i][k]->_a_ws[m]);
+                        merged_curves[i]->_a_ts.push_back(multiple_curves[i][k]->_a_ts[m]);
+                        merged_curves[i]->_a_rs.push_back(multiple_curves[i][k]->_a_rs[m]);
+                        merged_curves[i]->_K_s.push_back(multiple_curves[i][k]->_K_s[m]);
+                        merged_curves[i]->_arc_length.push_back(multiple_curves[i][k]->_arc_length[m]);
+                        merged_curves[i]->_theta.push_back(multiple_curves[i][k]->_theta[m]);
+                        merged_curves[i]->_x_fir.push_back(multiple_curves[i][k]->_x_fir[m]);
+                        merged_curves[i]->_y_fir.push_back(multiple_curves[i][k]->_y_fir[m]);
+                    }
+                }
+                else
+                {
+                    for (size_t m = 1; m <= multiple_curves[i][k]->_total; ++m)
+                    {
+                        merged_curves[i]->_points.push_back(multiple_curves[i][k]->_points[m]);
+                        merged_curves[i]->_v_s.push_back(multiple_curves[i][k]->_v_s[m]);
+                        merged_curves[i]->_w_s.push_back(multiple_curves[i][k]->_w_s[m]);
+                        merged_curves[i]->_a_ws.push_back(multiple_curves[i][k]->_a_ws[m]);
+                        merged_curves[i]->_a_ts.push_back(multiple_curves[i][k]->_a_ts[m]);
+                        merged_curves[i]->_a_rs.push_back(multiple_curves[i][k]->_a_rs[m]);
+                        merged_curves[i]->_K_s.push_back(multiple_curves[i][k]->_K_s[m]);
+                        merged_curves[i]->_arc_length.push_back(multiple_curves[i][k]->_arc_length[m]);
+                        merged_curves[i]->_theta.push_back(multiple_curves[i][k]->_theta[m]);
+                        merged_curves[i]->_x_fir.push_back(multiple_curves[i][k]->_x_fir[m]);
+                        merged_curves[i]->_y_fir.push_back(multiple_curves[i][k]->_y_fir[m]);
+
+                    }
+                }
+            }
+        }
+
+}
+
+
+
+
+
+
+void Path_Planner::plotting()
+{
+    // 通过画图的形式显示合并后的曲线特性
+
+    // // path
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &points = merged_curves[i]->_points;
+    //     // 提取起点和终点
+    //     const auto &start = points.front();
+    //     const auto &end = points.back();
+    //     // 提取x和y坐标
+    //     std::vector<double> x, y;
+    //     for (const auto &point : points)
+    //     {
+    //         x.push_back(point.first);
+    //         y.push_back(point.second);
+    //     }
+    //     // 绘制曲线
+    //     plt::plot(x, y);
+    //     // 标记起点和终点
+    //     plt::plot({start.first}, {start.second}, "r*"); // 红色星表示起点
+    //     plt::plot({end.first}, {end.second}, "k*");     // 黑色星表示终点
+    //     plt::title("Robot " + std::to_string(i + 1) + " Trajectory");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y"); 
+    // }
+
+
+
+
+    // // _v_s
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &v_s = merged_curves[i]->_v_s;
+    //     // 提取起点和终点
+    //     const auto &start = v_s.front();
+    //     const auto &end = v_s.back();
+    //     // 绘制曲线
+    //     plt::plot(v_s);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({v_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
+    //     plt::title("Robot " + std::to_string(i + 1) + " v_s");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+
+
+    // // _w_s
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &w_s = merged_curves[i]->_w_s;
+    //     // 提取起点和终点
+    //     const auto &start = w_s.front();
+    //     const auto &end = w_s.back();
+    //     // 绘制曲线
+    //     plt::plot(w_s);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({w_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " w_s");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+
+    // // _a_ws
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &a_ws = merged_curves[i]->_a_ws;
+    //     // 提取起点和终点
+    //     const auto &start = a_ws.front();
+    //     const auto &end = a_ws.back();
+    //     // 绘制曲线
+    //     plt::plot(a_ws);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({a_ws.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " a_ws");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+    // // _a_ts
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &a_ts = merged_curves[i]->_a_ts;
+    //     // 提取起点和终点
+    //     const auto &start = a_ts.front();
+    //     const auto &end = a_ts.back();
+    //     // 绘制曲线
+    //     plt::plot(a_ts);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({a_ts.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " a_ts");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+    // _a_rs
+    for (size_t i = 0; i < merged_curves.size(); ++i)
+    {
+        plt::figure(i);
+        // 获取曲线的所有点
+        const auto &a_rs = merged_curves[i]->_a_rs;
+        // 提取起点和终点
+        const auto &start = a_rs.front();
+        const auto &end = a_rs.back();
+        // 绘制曲线
+        plt::plot(a_rs);
+        // 标记起点和终点
+        plt::plot({0}, {start}, "r*"); // 红色星表示起点
+        plt::plot({a_rs.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+        plt::title("Robot " + std::to_string(i + 1) + " a_rs");
+        plt::xlabel("x");
+        plt::ylabel("y");
+    }
+
+    plt::show();
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -1110,6 +1354,9 @@ int main(int argc, char **argv)
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
+
+    // 通过画图的形式显示合并后的曲线特性
+    // path_planner->plotting();
 
     // 选择一个机器人，比如第一个机器人，发布其路径可视化
     while (ros::ok())

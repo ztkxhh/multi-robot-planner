@@ -30,11 +30,16 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
-
-
 include_directories( ${catkin_INCLUDE_DIRS})
 
 
+# matplotlib.h
+# 查找python库版本
+find_package(PythonLibs 2.7)
+# 指定头文件路径
+set(PYTHON2.7_INLCUDE_DIRS /usr/include/python2.7)
+set(matplot_DIRS /home/zt/matplotlib-cpp)
+include_directories(${PYTHON2.7_INLCUDE_DIRS} ${matplot_DIRS})
 
 
 
@@ -48,10 +53,12 @@ src/Path_Planner.cpp
 src/bezier_base.cpp 
 src/Gen_Starts_Goals.cpp 
 src/Beziercurve.cpp)
-
-target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} )
-
-
+target_include_directories(Path_Planner PRIVATE ${PYTHON2_INCLUDE_DIRS})
+target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES})
 
 
+
+# # 添加相关库文件链接到工程
+# target_include_directories(my_cmake_exe PRIVATE ${PYTHON2_INCLUDE_DIRS})
+# target_link_libraries(my_cmake_exe ${PYTHON_LIBRARIES} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} pthread)
 
