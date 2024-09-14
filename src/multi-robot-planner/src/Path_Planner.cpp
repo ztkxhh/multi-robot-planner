@@ -1116,9 +1116,12 @@ void Path_Planner::Mergecurve()
             {
                 total += multiple_curves[i][j]->_total;
             }
+
+
             total -= seg_num - 1;
 
             merged_curves[i] = std::make_shared<Beziercurve>(total);
+
             // 将multiple_curves中的曲线进行合并
             for (size_t k = 0; k < seg_num; ++k)
             {
@@ -1319,48 +1322,314 @@ void Path_Planner::plotting()
     // }
 
 
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i);
-        // 获取曲线的所有点
-        const auto &c1 = merged_curves[i]->DYM.v_t;
-        // 提取起点和终点
-        const auto &start = c1.front();
-        const auto &end = c1.back();
-        // 绘制曲线
-        plt::plot(c1);
-        // 标记起点和终点
-        plt::plot({0}, {start}, "r*"); // 红色星表示起点
-        plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->DYM.v_t;
+    //     // 提取起点和终点
+    //     const auto &start = c1.front();
+    //     const auto &end = c1.back();
+    //     // 绘制曲线
+    //     plt::plot(c1);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
 
-        plt::title("Robot " + std::to_string(i + 1) + " vt");
-        plt::xlabel("x");
-        plt::ylabel("y");
+    //     plt::title("Robot " + std::to_string(i + 1) + " vt");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i+merged_curves.size());
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->DYM.w_t;
+    //     // 提取起点和终点
+    //     const auto &start = c1.front();
+    //     const auto &end = c1.back();
+    //     // 绘制曲线
+    //     plt::plot(c1);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " wt");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i+2*merged_curves.size());
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->_duration;
+    //     // 提取起点和终点
+    //     const auto &start = c1.front();
+    //     const auto &end = c1.back();
+    //     // 绘制曲线
+    //     plt::plot(c1);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
+
+    //     plt::title("Robot " + std::to_string(i + 1) + " duration");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
+
+    // plt::show();
+
+
+
+
+
+    for (size_t i = 0; i < merged_curves.size(); i++)
+    {
+        if (merged_curves[i]->_duration.back() > 50.0)
+        {
+
+            // 打印出所有的Vars.c_1, Var.c_2, Var.c_3, Var.c_4, Var.c_5, Var.c_6, Var.c_7, Var.c_8, Var.c_9, Var.c_10, Var.c_11, Var.c_12
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c1 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_1.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_1[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c2 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_2.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_2[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c3 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_3.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_3[j] << " ";
+            }
+            std::cout << std::endl;
+            
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c4 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_4.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_4[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c5 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_5.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_5[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c6 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_6.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_6[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c7 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_7.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_7[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c8 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_8.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_8[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c9 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_9.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_9[j] << " ";
+            }
+            std::cout << std::endl;
+            
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c10 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_10.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_10[j] << " ";
+            }
+            std::cout << std::endl;
+
+            ROS_INFO(" ");
+            ROS_INFO("Robot %d Vars.c11 are : ", i+1);
+            for (size_t j = 0; j < merged_curves[i]->Vars.c_11.size(); j++)
+            {
+                std::cout << merged_curves[i]->Vars.c_11[j] << " ";
+            }
+            std::cout << std::endl;
+            
+
+
+
+
+
+            int index = 0;
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &points = merged_curves[i]->_points;
+            // 提取起点和终点
+            const auto &start = points.front();
+            const auto &end = points.back();
+            // 提取x和y坐标
+            std::vector<double> x, y;
+            for (const auto &point : points)
+            {
+                x.push_back(point.first);
+                y.push_back(point.second);
+            }
+            // 绘制曲线
+            plt::plot(x, y);
+            plt::title("Robot " + std::to_string(i + 1) + " Trajectory");
+            plt::xlabel("x");
+            plt::ylabel("y"); 
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &v_s = merged_curves[i]->_v_s;
+            // 绘制曲线
+            plt::plot(v_s);
+            plt::title("Robot " + std::to_string(i + 1) + " v_s");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &w_s = merged_curves[i]->_w_s;
+            // 绘制曲线 
+            plt::plot(w_s);
+            plt::title("Robot " + std::to_string(i + 1) + " w_s");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &a_ws = merged_curves[i]->_a_ws;
+            // 绘制曲线
+            plt::plot(a_ws);
+            plt::title("Robot " + std::to_string(i + 1) + " a_ws");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &a_ts = merged_curves[i]->_a_ts;
+            // 绘制曲线
+            plt::plot(a_ts);
+            plt::title("Robot " + std::to_string(i + 1) + " a_ts");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &a_rs = merged_curves[i]->_a_rs;
+            // 绘制曲线
+            plt::plot(a_rs);
+            plt::title("Robot " + std::to_string(i + 1) + " a_rs");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &c1 = merged_curves[i]->DYM.v_t;
+            // 绘制曲线
+            plt::plot(c1);
+            plt::title("Robot " + std::to_string(i + 1) + " vt");
+
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &c2 = merged_curves[i]->DYM.w_t;
+            // 绘制曲线
+            plt::plot(c2);
+            plt::title("Robot " + std::to_string(i + 1) + " wt");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &at_t = merged_curves[i]->DYM.at_t;
+            // 绘制曲线
+            plt::plot(at_t);
+            plt::title("Robot " + std::to_string(i + 1) + " at_t");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &aw_t = merged_curves[i]->DYM.aw_t;
+            // 绘制曲线
+            plt::plot(aw_t);
+            plt::title("Robot " + std::to_string(i + 1) + " aw_t");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &ar_t = merged_curves[i]->DYM.ar_t;
+            // 绘制曲线
+            plt::plot(ar_t);
+            plt::title("Robot " + std::to_string(i + 1) + " ar_t");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &c3 = merged_curves[i]->_a_i;
+            // 绘制曲线
+            plt::plot(c3);
+            // 标记起点和终点
+            plt::title("Robot " + std::to_string(i + 1) + " ai");
+
+            index += 1;
+
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &c4 = merged_curves[i]->_b_i;
+            // 绘制曲线
+            plt::plot(c4);
+            plt::title("Robot " + std::to_string(i + 1) + " bi");
+
+            index += 1;
+            plt::figure(index);
+            // 获取曲线的所有点
+            const auto &c5 = merged_curves[i]->_duration;
+            // 绘制曲线
+            plt::plot(c5);
+            plt::title("Robot " + std::to_string(i + 1) + " duration");
+
+            plt::show();
+
+
+        }
     }
 
 
-
-
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i+merged_curves.size());
-        // 获取曲线的所有点
-        const auto &c1 = merged_curves[i]->_duration;
-        // 提取起点和终点
-        const auto &start = c1.front();
-        const auto &end = c1.back();
-        // 绘制曲线
-        plt::plot(c1);
-        // 标记起点和终点
-        plt::plot({0}, {start}, "r*"); // 红色星表示起点
-        plt::plot({c1.size() - 1}, {end}, "k*"); // 黑色星表示终点
-
-        plt::title("Robot " + std::to_string(i + 1) + " duration");
-        plt::xlabel("x");
-        plt::ylabel("y");
-    }
-
-    plt::show();
 }
 
 

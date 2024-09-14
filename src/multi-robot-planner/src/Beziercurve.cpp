@@ -244,11 +244,12 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
     for (int i = 0; i < this->_total + 1; ++i)
     {
         // v_con
-        double a = 2.0 / this->_T_s;
-        double b = 1.0 / this->_K_s[i];
-        double c = b - lim.cem;
-        double ce = a * sqrt(b * b - c * c); // chord error
-        double vc = std::min(lim.v_max, ce);
+        // double a = 2.0 / this->_T_s;
+        // double b = 1.0 / this->_K_s[i];
+        // double c = b - lim.cem;
+        // double ce = a * sqrt(b * b - c * c); // chord error
+        // double vc = std::min(lim.v_max, ce);
+        double vc = lim.v_max;
         double vci = vc * vc / (this->_v_s[i] * this->_v_s[i]);
         // w_con
         double wci = lim.w_max * lim.w_max / (this->_w_s[i] * this->_w_s[i]);
@@ -362,7 +363,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         // Create an empty model
         GRBModel model = GRBModel(env);
 
-        model.getEnv().set(GRB_IntParam_Threads, 12);
+        model.getEnv().set(GRB_IntParam_Threads, 1);
 
         int N = 2 * this->_total + 1;
         // Number of varibles [0]-[this->_total]是 a_i
@@ -426,12 +427,24 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
             // model.addConstr(vars[2*this->_total + 1 + i] >= -vars[this->_total + 1 + i]);
         }
 
-        // Add constraints a_0 = 0 and a_{this->_total} = 0
-        model.addConstr(vars[0] == 0);
-        model.addConstr(vars[this->_total] == 0);
-        // Add constraints b_0 = 0 and b_{this->_total-1} = 0
-        model.addConstr(vars[this->_total + 1] == 0);
-        model.addConstr(vars[2 * this->_total] == 0);
+
+
+        // Add constraints for initial states
+        model.addConstr(this->_v_s[0] * vars[0] == 0);
+        model.addConstr(this->_w_s[0] * vars[0] == 0);
+        model.addConstr(this->_a_ws[0] * vars[0] + this->_w_s[0] * vars[this->_total + 1]== 0);
+        model.addConstr(this->_a_ts[0] * vars[0] + this->_v_s[0] * vars[this->_total + 1]== 0);
+        model.addConstr(this->_a_rs[0] * vars[0] == 0);
+
+        // Add constraints for final states
+        model.addConstr(this->_v_s[this->_total] * vars[this->_total] == 0);
+        model.addConstr(this->_w_s[this->_total] * vars[this->_total] == 0);
+        model.addConstr(this->_a_ws[this->_total] * vars[this->_total] + this->_w_s[this->_total] * vars[2 * this->_total]== 0);
+        model.addConstr(this->_a_ts[this->_total] * vars[this->_total] + this->_v_s[this->_total] * vars[2 * this->_total]== 0);
+        model.addConstr(this->_a_rs[this->_total] * vars[this->_total] == 0);
+
+
+
 
         double lim_dif;
         nh.param("/path_planning/lim_dif", lim_dif, 0.01);
