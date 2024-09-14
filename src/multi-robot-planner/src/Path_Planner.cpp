@@ -860,6 +860,10 @@ int Path_Planner::MultiRobotTraGen(
             }
         }
 
+
+
+
+
         // // 添加起始状态与终止状态的速度和加速度约束，即起始状态x,y的速度和加速度为0，终止状态的速度和加速度为0
         // // 起始状态的速度和加速度约束分别为：P_2^i - P_1^i = 0, P_3^i - 2P_2^i + P_1^i = 0
         // // 终止状态的速度和加速度约束分别为：P_6^i - P_5^i = 0, P_6^i - 2P_5^i + P_4^i = 0
@@ -1174,8 +1178,6 @@ void Path_Planner::TOTP(ros::NodeHandle &nh)
     {
         merged_curves[i]->TOTP(lim, nh);
     }
-
-
 
 }
 

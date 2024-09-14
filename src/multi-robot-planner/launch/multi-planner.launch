@@ -25,7 +25,7 @@
     <arg name ="awm" default = "5.0"/>
     <arg name ="arm" default = "5.0"/>
     <arg name ="cem" default = "0.01"/>
-    <arg name ="lim_dif" default = "0.05"/>
+    <arg name ="lim_dif" default = "0.02"/>
 
 
 
