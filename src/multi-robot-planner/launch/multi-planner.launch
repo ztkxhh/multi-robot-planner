@@ -9,29 +9,23 @@
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
-
     <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
 
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
     <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
-    <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
-
+    <param name="points_num" type= "int" value="100"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
 
 
     <!-- limits  vm, wm, atm, awm, arm, cem -->
     <arg name ="vm" default = "2.0"/>
-
     <arg name ="wm" default = "2.0"/>
-
     <arg name ="atm" default = "5.0"/>
-
     <arg name ="awm" default = "5.0"/>
-
     <arg name ="arm" default = "5.0"/>
-
     <arg name ="cem" default = "0.01"/>
+    <arg name ="lim_dif" default = "0.05"/>
 
 
 
@@ -60,6 +54,7 @@
         <param name="awm"  value="$(arg awm)"/>
         <param name="arm"  value="$(arg arm)"/>
         <param name="cem"  value="$(arg cem)"/>
+        <param name="lim_dif"  value="$(arg lim_dif)"/>
     </node>
 
     <!-- Open Rviz to visualize-->

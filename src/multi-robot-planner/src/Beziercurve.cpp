@@ -46,7 +46,6 @@ Beziercurve::Beziercurve(const int &total)
     this->_a_ws.reserve(total + 1);                // angular acceleration
     this->_a_ts.reserve(total + 1);                // tangential acceleration
     this->_a_rs.reserve(total + 1);                // curvature
-    this->_arc_length.resize(total + 1);           // radial acceleration
     this->_K_s.reserve(total + 1);                 // accumulated arc_length for segement
     this->_theta.reserve(total + 1);               // angle at each point
 
@@ -212,7 +211,7 @@ void Beziercurve::Atrributes()
 
 }
 
-void Beziercurve::TOTP(const Limits & lim)
+void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 {
     this->Vars.c_1.resize(this->_total + 1);
     this->Vars.c_2.resize(this->_total);
@@ -232,6 +231,11 @@ void Beziercurve::TOTP(const Limits & lim)
 
     this->_T_i.resize(this->_total);
 
+    this->DYM.v_t.resize(this->_total + 1);
+    this->DYM.w_t.resize(this->_total + 1);
+    this->DYM.aw_t.resize(this->_total + 1);
+    this->DYM.at_t.resize(this->_total + 1);
+    this->DYM.ar_t.resize(this->_total + 1);
 
     /*
     Calculate variables for optimization
@@ -351,7 +355,7 @@ void Beziercurve::TOTP(const Limits & lim)
         // Create an environment
         GRBEnv env = GRBEnv(true);
         //禁止打印输出信息
-        // env.set("OutputFlag", "0");
+        env.set("OutputFlag", "0");
 
         env.start();
 
@@ -429,8 +433,8 @@ void Beziercurve::TOTP(const Limits & lim)
         model.addConstr(vars[this->_total + 1] == 0);
         model.addConstr(vars[2 * this->_total] == 0);
 
-
-        double lim_dif = 0.1;
+        double lim_dif;
+        nh.param("/path_planning/lim_dif", lim_dif, 0.01);
         double h = 1.0 / this->_total;
 
         for (int i = 0; i < this->_total-2; ++i)
@@ -500,6 +504,14 @@ void Beziercurve::TOTP(const Limits & lim)
     }
 
 
-
+    // Choose the begining point of each segement
+    for (int i = 0; i < this->_total; ++i)
+    {
+        this->DYM.v_t[i] = this->_v_s[i] * sqrt(this->_a_i[i]);
+        this->DYM.w_t[i] = this->_w_s[i] * sqrt(this->_a_i[i]);
+        this->DYM.aw_t[i] = this->_a_ws[i] * this->_a_i[i] + this->_w_s[i] * this->_b_i[i];
+        this->DYM.at_t[i] = this->_a_ts[i] * this->_a_i[i] + this->_v_s[i] * this->_b_i[i];
+        this->DYM.ar_t[i] = this->_a_rs[i] * this->_a_i[i];
+    }
 }
 

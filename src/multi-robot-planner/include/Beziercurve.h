@@ -54,6 +54,7 @@ public:
     std::vector<double>_duration; // duration until i-th segement
     std::vector<double> _a_i; // a_i
     std::vector<double> _b_i; // b_i
+    Dynamics_T DYM;
 
     // parameters for Bezier curve path
     std::vector<std::pair<double, double>> _points; // points on curve from p_0 to p_N
@@ -63,7 +64,6 @@ public:
     std::vector<double> _a_ts;       // tangential acceleration
     std::vector<double> _a_rs;       // radial acceleration
     std::vector<double> _K_s;        // curvature
-    std::vector<double> _arc_length; // accumulated arc_length until i
     std::vector<double> _theta;       // angle at each point
 
     // parameters for Time allocation, but calculate in Beziercurve.cpp
@@ -82,7 +82,7 @@ public:
     Dynamics_S get_dym(double &s);
     void Atrributes();  // Compute all attributes
 
-    void TOTP(const Limits & lim);
+    void TOTP(const Limits & lim, ros::NodeHandle &nh);
 
 
 };
