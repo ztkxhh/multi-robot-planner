@@ -94,7 +94,7 @@ private:
     bool GenerationCurves(ros::NodeHandle &nh);
     void Mergecurve();
 
-    void TOTP(ros::NodeHandle &nh);
+    void Time_Optimization(ros::NodeHandle &nh);
 
 
     ros::Subscriber map_sub_;

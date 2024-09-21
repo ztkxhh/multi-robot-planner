@@ -363,7 +363,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         // Create an empty model
         GRBModel model = GRBModel(env);
 
-        model.getEnv().set(GRB_IntParam_Threads, 1);
+        model.getEnv().set(GRB_IntParam_Threads, 10);
 
         int N = 2 * this->_total + 1;
         // Number of varibles [0]-[this->_total]是 a_i
