@@ -10,24 +10,28 @@
 #include <nanoflann.hpp>
 #include "Path_Planner.h"
 
-// 创建一个记录相互影响信息的结构体
 struct InfluenceInfo {
     int indexA;
     int indexB;
-    bool Infulencetype; // ture: acute, false: non-acute
+    bool Infulencetype; // true: acute, false: non-acute
 };
 
-struct  InfluenceSegment
+
+struct influncepair
+{
+    int indexA;
+    int indexB;
+};
+
+
+struct InfluenceSegment
 {
     int curveAIndex;
     int curveBIndex;
-    int startA;
-    int endA;
-    int startB;
-    int endB;
-    bool Infulencetype; // ture: acute; false: non-acute
-    bool prioirtytype; // ture: curveA_ahead_curveB; false: curveB_ahead_curveA
+    std::vector<influncepair> AB;
+    std::vector<influncepair> BA;
 };
+
 
 // 并查集（用于对曲线进行分组）
 class UnionFind {
@@ -58,13 +62,15 @@ private:
 
     double robot_radius;
 
+    double influnce_factor;
+
     double InfluenceThreshold;
 
     std::vector <std::shared_ptr<Beziercurve>> curves;
 
     bool curvesInfluenceEachOther( const Beziercurve& a, const Beziercurve& b, double threshold);
 
-    void processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold, std::vector<InfluenceSegment>& segments);
+    void processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold);
 
     bool computeInfluenceType(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB);
 
@@ -74,6 +80,8 @@ private:
 public:
 
     std::shared_ptr<Path_Planner> path_planner;
+
+    std::vector<InfluenceSegment> influenceSegments;
 
     MultiTra_Planner(ros::NodeHandle& nh);
     ~MultiTra_Planner()=default;

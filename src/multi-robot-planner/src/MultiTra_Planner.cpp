@@ -37,7 +37,13 @@ MultiTra_Planner::MultiTra_Planner(ros::NodeHandle& nh)
         robot_radius = 0.5; // 默认半径0.5米
     }
 
-    InfluenceThreshold = 2.0 * robot_radius;
+    // 获取影响因子
+    if (!nh.getParam("influnce_factor", influnce_factor)) {
+        ROS_WARN("Failed to get influence_threshold, using default value 1.0");
+        influnce_factor = 1.0; // 默认阈值1.0米
+    }
+
+    InfluenceThreshold = 2.0 * influnce_factor * robot_radius;
 
 }
 
@@ -67,9 +73,11 @@ bool MultiTra_Planner::computeInfluenceType(const Beziercurve& a, const Beziercu
     double vx2 = b._x_fir[idxB];
     double vy2 = b._y_fir[idxB];
 
-    if ((vx1 == 0 && vy1 == 0) || (vx2 == 0 && vy2 == 0))
+    if ((vx1 == 0 && vy1 == 0) || (vx2 == 0 && vy2 == 0)){
+        ROS_WARN("Zero velocity vector detected, cannot compute influence type");
         return false;
-    
+    }
+
     double dotProduct = vx1 * vx2 + vy1 * vy2;
 
     if (dotProduct > 0)
@@ -83,63 +91,153 @@ bool MultiTra_Planner::computeInfluenceType(const Beziercurve& a, const Beziercu
 }
 
 
-void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold, std::vector<InfluenceSegment>& segments) 
+
+
+
+
+
+void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold) 
 {
+    InfluenceSegment seg;
+    seg.curveAIndex = idxA;
+    seg.curveBIndex = idxB;
+
     int nA = a._points.size();
     int nB = b._points.size();
 
     double threshold2 = threshold * threshold;
 
-    // 收集a_ahead_b情况下所有相互影响的点对及其影响类型
-    std::vector<InfluenceInfo> influencePointsAB;
-    influencePointsAB.reserve(nA);
-    for (int i = 0; i < nA; ++i) {
+    std::vector<std::vector<bool>> influenceMatrix(nA, std::vector<bool>(nB, false));
+
+    for (int i = 0; i < nA; ++i)
+    {
         for (int j = 0; j < nB; ++j) {
             double dx = a._points[i].first - b._points[j].first;
             double dy = a._points[i].second - b._points[j].second;
             double dist2 = dx * dx + dy * dy;
             if (dist2 < threshold2) {
-                bool influenceType = computeInfluenceType(a, b, i, j);
-                influencePointsAB.push_back({i, j, influenceType});
+                influenceMatrix[i][j] = true;
             }
         }
     }
 
-    // // 对相互影响的点对进行分段
-    // if (influencePointsAB.empty())
-    //     return;
+    // 收集a_ahead_b情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线A上是连续的
+    std::vector<std::vector<InfluenceInfo>> influencePointsAB;
+    influencePointsAB.reserve(nA);
 
-    // // 初始化第一个段
-    // size_t startA = influencePointsAB[0].indexA;
-    // size_t startB = influencePointsAB[0].indexB;
-    // size_t endA = startA;
-    // size_t endB = startB;
-    // bool currentType = influencePointsAB[0].Infulencetype;
+    int i = 0;
+    while (i < nA)
+    {
+        while (i < nA && std::none_of(influenceMatrix[i].begin(), influenceMatrix[i].end(), [](bool v) { return v; }))
+        {
+            ++i;
+        }
+        if (i >= nA)
+            break;
 
-    // for (size_t k = 1; k < influencePointsAB.size(); ++k) {
-    //     size_t idxA = influencePointsAB[k].indexA;
-    //     size_t idxB = influencePointsAB[k].indexB;
-    //     bool type = influencePointsAB[k].Infulencetype;
+        std::vector<int> firstidxB;
 
-    //     // 判断是否与当前段连续
-    //     if (idxA == endA + 1 && idxB == endB + 1 && type == currentType) {
-    //         // 更新结束索引
-    //         endA = idxA;
-    //         endB = idxB;
-    //     } else {
-    //         // 保存当前段
-    //         segments.push_back({idxA, idxB, startA, endA, startB, endB, currentType});
-    //         // 开始新的段
-    //         startA = idxA;
-    //         startB = idxB;
-    //         endA = idxA;
-    //         endB = idxB;
-    //         currentType = type;
+        int preidxB = 0;
+
+        for (int j = 0; j < nB; ++j)
+        {
+            if (influenceMatrix[i][j])
+            {
+                int dif_j = j - preidxB;
+                if (dif_j > 2)
+                {
+                    firstidxB.push_back(j);
+                }
+                preidxB = j;
+            }
+            std::vector<InfluenceInfo> element;
+            for (int k = 0; k < firstidxB.size(); ++k)
+            {
+                element.push_back({i, firstidxB[k], computeInfluenceType(a, b, i, firstidxB[k])});
+            }
+            influencePointsAB.push_back(element);
+        }
+
+        ++i;
+    }
+
+
+    int sizeA = influencePointsAB.size();
+    // 收集相互影响的段, 首先初始化一个段，然后遍历所有的影响点，如果与当前任意一个段相邻且影响类型相同，则合并，否则添加一个新的段
+    std::vector<std::vector<InfluenceInfo>> influenceSegmentsAB;
+    influenceSegmentsAB.push_back(influencePointsAB[0]);
+
+    for (int i = 0 ; i< sizeA; ++i)
+    {
+        int sizeB = influencePointsAB[i].size();
+        int startA = influencePointsAB[i][0].indexA;
+        int startB = influencePointsAB[i][0].indexB;
+        int endA = startA;
+        int endB = startB;
+        bool currentType = influencePointsAB[i][0].Infulencetype;
+
+        for (int k = 1; k < sizeB; ++k)
+        {
+            int idxA = influencePointsAB[i][k].indexA;
+            int idxB = influencePointsAB[i][k].indexB;
+            bool type = influencePointsAB[i][k].Infulencetype;
+
+            if (idxA == endA + 1 && idxB == endB + 1 && type == currentType)
+            {
+                endA = idxA;
+                endB = idxB;
+            }
+            else
+            {
+                influenceSegmentsAB.push_back(influencePointsAB[i]);
+                startA = idxA;
+                startB = idxB;
+                endA = idxA;
+                endB = idxB;
+                currentType = type;
+            }
+        }
+    }
+
+
+
+
+    // for (int i = 0 ; i< sizeA; ++i)
+    // {
+    //     int sizeB = influencePointsAB[i].size();
+    //     int startA = influencePointsAB[i][0].indexA;
+    //     int startB = influencePointsAB[i][0].indexB;
+    //     int endA = startA;
+    //     int endB = startB;
+    //     bool currentType = influencePointsAB[i][0].Infulencetype;
+
+    //     for (int k = 1; k < sizeB; ++k)
+    //     {
+    //         int idxA = influencePointsAB[i][k].indexA;
+    //         int idxB = influencePointsAB[i][k].indexB;
+    //         bool type = influencePointsAB[i][k].Infulencetype;
+
+    //         if (idxA == endA + 1 && idxB == endB + 1 && type == currentType)
+    //         {
+    //             endA = idxA;
+    //             endB = idxB;
+    //         }
+    //         else
+    //         {
+    //             influenceSegmentsAB.push_back(influencePointsAB[i]);
+    //             startA = idxA;
+    //             startB = idxB;
+    //             endA = idxA;
+    //             endB = idxB;
+    //             currentType = type;
+    //         }
     //     }
     // }
-    // // 保存最后一个段
-    // segments.push_back({idxA, idxB, startA, endA, startB, endB, currentType});
-}
+
+
+
+
+
 
 
 
@@ -158,7 +256,7 @@ void MultiTra_Planner::GuropSubstion()
     }
 
     // 构建相互影响图
-    std::vector<std::vector<int>> InfluenceGraph(n);
+    std::vector<std::unordered_set<int>> InfluenceGraph(n);
 
     for (int i = 0; i < n; ++i) {
         double minX1, maxX1, minY1, maxY1;
@@ -168,8 +266,8 @@ void MultiTra_Planner::GuropSubstion()
             std::tie(minX2, maxX2, minY2, maxY2) = boundingBoxes[j];
             if (boundingBoxesClose(minX1, maxX1, minY1, maxY1, minX2, maxX2, minY2, maxY2, InfluenceThreshold)) {
                 if (curvesInfluenceEachOther(*curves[i], *curves[j], InfluenceThreshold)) {
-                    InfluenceGraph[i].push_back(j);
-                    InfluenceGraph[j].push_back(i);
+                    InfluenceGraph[i].insert(j);
+                    InfluenceGraph[j].insert(i);
                 }
             }
         }
@@ -191,15 +289,15 @@ void MultiTra_Planner::GuropSubstion()
 
 
     // 处理每个分组
-    std::vector<InfluenceSegment> influenceSegments;
     for (const auto& groupEntry : groups) {
         const std::vector<int>& groupIndices = groupEntry.second;
         for (size_t i = 0; i < groupIndices.size(); ++i) {
             int idxA = groupIndices[i];
             for (size_t j = i + 1; j < groupIndices.size(); ++j) {
                 int idxB = groupIndices[j];
-                if (std::find(InfluenceGraph[idxA].begin(), InfluenceGraph[idxA].end(), idxB) != InfluenceGraph[idxA].end()) {
-                    processCurvePair(*curves[idxA], *curves[idxB], idxA, idxB, InfluenceThreshold, influenceSegments);
+                if (InfluenceGraph[idxA].find(idxB) != InfluenceGraph[idxA].end())
+                {
+                    processCurvePair(*curves[idxA], *curves[idxB], idxA, idxB, InfluenceThreshold);
                 }
             }
         }
@@ -250,6 +348,50 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+
+
+
+
+
+    // for (int i = 0; i < sizeA; ++i)
+    // {
+    //     int sizeB = influencePointsAB[i].size();
+    //     int startA = influencePointsAB[i][0].indexA;
+    //     int startB = influencePointsAB[i][0].indexB;
+    //     int endA = startA;
+    //     int endB = startB;
+    //     bool currentType = influencePointsAB[i][0].Infulencetype;
+
+    //     for (int k = 1; k < sizeB; ++k)
+    //     {
+    //         int idxA = influencePointsAB[i][k].indexA;
+    //         int idxB = influencePointsAB[i][k].indexB;
+    //         bool type = influencePointsAB[i][k].Infulencetype;
+
+
+    //         if (idxA == endA + 1 && idxB == endB + 1 && type == currentType)
+    //         {
+    //             endA = idxA;
+    //             endB = idxB;
+    //         }
+    //         else
+    //         {
+    //             segments.push_back({idxA, idxB, startA, endA, startB, endB, currentType});
+    //             startA = idxA;
+    //             startB = idxB;
+    //             endA = idxA;
+    //             endB = idxB;
+    //             currentType = type;
+    //         }
+    //     }
+    //     segments.push_back({idxA, idxB, startA, endA, startB, endB, currentType});
+    // }
+
+
+
+
+
 
 
 

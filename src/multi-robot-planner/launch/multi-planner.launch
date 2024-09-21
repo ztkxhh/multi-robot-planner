@@ -27,6 +27,8 @@
     <arg name ="cem" default = "0.01"/>
     <arg name ="lim_dif" default = "0.05"/>
 
+    <arg name = "influnce_factor" default = "1.2"/>
+    <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
 
 
 
