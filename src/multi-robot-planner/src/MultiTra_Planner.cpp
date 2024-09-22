@@ -45,6 +45,8 @@ MultiTra_Planner::MultiTra_Planner(ros::NodeHandle& nh)
 
     InfluenceThreshold = 2.0 * influnce_factor * robot_radius;
 
+    GuropSubstion();
+
 }
 
 
@@ -144,95 +146,200 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
             if (influenceMatrix[i][j])
             {
                 int dif_j = j - preidxB;
-                if (dif_j > 2)
+                if (dif_j > 5)
                 {
                     firstidxB.push_back(j);
                 }
                 preidxB = j;
             }
-            std::vector<InfluenceInfo> element;
-            for (int k = 0; k < firstidxB.size(); ++k)
-            {
-                element.push_back({i, firstidxB[k], computeInfluenceType(a, b, i, firstidxB[k])});
-            }
-            influencePointsAB.push_back(element);
         }
+
+        std::vector<InfluenceInfo> element;
+        for (int k = 0; k < firstidxB.size(); ++k)
+        {
+            element.push_back({i, firstidxB[k], computeInfluenceType(a, b, i, firstidxB[k])});
+        }
+        influencePointsAB.push_back(element);
+
 
         ++i;
     }
 
 
-    int sizeA = influencePointsAB.size();
-    // 收集相互影响的段, 首先初始化一个段，然后遍历所有的影响点，如果与当前任意一个段相邻且影响类型相同，则合并，否则添加一个新的段
+    // 收集相互影响的段, 首先初始化一个段，然后遍历所有的影响点，如果与当前任意一个段相邻且影响类型相同，则合并，否则添加一个新的段并将当前影响点作为新段的起点
     std::vector<std::vector<InfluenceInfo>> influenceSegmentsAB;
-    influenceSegmentsAB.push_back(influencePointsAB[0]);
+    int sizeA = influencePointsAB.size();
 
     for (int i = 0 ; i< sizeA; ++i)
     {
         int sizeB = influencePointsAB[i].size();
-        int startA = influencePointsAB[i][0].indexA;
-        int startB = influencePointsAB[i][0].indexB;
-        int endA = startA;
-        int endB = startB;
-        bool currentType = influencePointsAB[i][0].Infulencetype;
 
-        for (int k = 1; k < sizeB; ++k)
+        for (int j = 0; j < sizeB; ++j)
         {
-            int idxA = influencePointsAB[i][k].indexA;
-            int idxB = influencePointsAB[i][k].indexB;
-            bool type = influencePointsAB[i][k].Infulencetype;
-
-            if (idxA == endA + 1 && idxB == endB + 1 && type == currentType)
+            if (influenceSegmentsAB.empty())
             {
-                endA = idxA;
-                endB = idxB;
+                std::vector<InfluenceInfo> segment;
+                segment.push_back(influencePointsAB[i][j]);
+                influenceSegmentsAB.push_back(segment);
+                continue;
             }
-            else
+
+            bool added = false;
+
+            for (int k = 0; k < influenceSegmentsAB.size(); ++k)
             {
-                influenceSegmentsAB.push_back(influencePointsAB[i]);
-                startA = idxA;
-                startB = idxB;
-                endA = idxA;
-                endB = idxB;
-                currentType = type;
+
+                int endA = influenceSegmentsAB[k].back().indexA;
+                int endB = influenceSegmentsAB[k].back().indexB;
+                bool currentType = influenceSegmentsAB[k].back().Infulencetype;
+
+                int dis_B = std::abs(influencePointsAB[i][j].indexB - endB);
+
+                if (influencePointsAB[i][j].indexA == endA + 1 && dis_B <= 5 && influencePointsAB[i][j].Infulencetype == currentType)
+                {
+                    influenceSegmentsAB[k].push_back(influencePointsAB[i][j]);
+                    added = true;
+                    break;
+                }
+            }
+            if(!added)
+            {
+                std::vector<InfluenceInfo> segment2;
+                segment2.push_back(influencePointsAB[i][j]);
+                influenceSegmentsAB.push_back(segment2);
             }
         }
     }
 
 
 
+    //输出打印influenceSegmentsAB用以调试
+    for (int i = 0; i < influenceSegmentsAB.size(); ++i)
+    {
+        for (int j = 0; j < influenceSegmentsAB[i].size(); ++j)
+        {
+            std::cout << "indexA: " << influenceSegmentsAB[i][j].indexA << " indexB: " << influenceSegmentsAB[i][j].indexB << " Infulencetype: " << influenceSegmentsAB[i][j].Infulencetype << std::endl;
+        }
+        std::cout << "----------------" << std::endl;
+    }
 
-    // for (int i = 0 ; i< sizeA; ++i)
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // // 收集b_ahead_a情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线B上是连续的
+    // std::vector<std::vector<InfluenceInfo>> influencePointsBA;
+    // influencePointsBA.reserve(nB);
+
+    // int j = 0;
+    // while (j < nB)
     // {
-    //     int sizeB = influencePointsAB[i].size();
-    //     int startA = influencePointsAB[i][0].indexA;
-    //     int startB = influencePointsAB[i][0].indexB;
-    //     int endA = startA;
-    //     int endB = startB;
-    //     bool currentType = influencePointsAB[i][0].Infulencetype;
-
-    //     for (int k = 1; k < sizeB; ++k)
+    //     while (j < nB && std::none_of(influenceMatrix.begin(), influenceMatrix.end(), [j](const std::vector<bool>& v) { return v[j]; }))
     //     {
-    //         int idxA = influencePointsAB[i][k].indexA;
-    //         int idxB = influencePointsAB[i][k].indexB;
-    //         bool type = influencePointsAB[i][k].Infulencetype;
+    //         ++j;
+    //     }
+    //     if (j >= nB)
+    //         break;
 
-    //         if (idxA == endA + 1 && idxB == endB + 1 && type == currentType)
+    //     std::vector<int> firstidxA;
+
+    //     int preidxA = 0;
+
+    //     for (int i = 0; i < nA; ++i)
+    //     {
+    //         if (influenceMatrix[i][j])
     //         {
-    //             endA = idxA;
-    //             endB = idxB;
+    //             int dif_i = i - preidxA;
+    //             if (dif_i > 5)
+    //             {
+    //                 firstidxA.push_back(i);
+    //             }
+    //             preidxA = i;
     //         }
-    //         else
+    //     }
+
+    //     std::vector<InfluenceInfo> element;
+    //     for (int k = 0; k < firstidxA.size(); ++k)
+    //     {
+    //         element.push_back({firstidxA[k], j, computeInfluenceType(a, b, firstidxA[k], j)});
+    //     }
+    //     influencePointsBA.push_back(element);
+
+
+    //     ++j;
+    // }
+
+
+    // // 收集相互影响的段, 首先初始化一个段，然后遍历所有的影响点，如果与当前任意一个段相邻且影响类型相同，则合并，否则添加一个新的段并将当前影响点作为新段的起点
+    // std::vector<std::vector<InfluenceInfo>> influenceSegmentsBA;
+    // int sizeB = influencePointsBA.size();
+
+    // for (int i = 0 ; i< sizeB; ++i)
+    // {
+    //     int sizeA = influencePointsBA[i].size();
+
+    //     for (int j = 0; j < sizeA; ++j)
+    //     {
+    //         if (influenceSegmentsBA.empty())
     //         {
-    //             influenceSegmentsAB.push_back(influencePointsAB[i]);
-    //             startA = idxA;
-    //             startB = idxB;
-    //             endA = idxA;
-    //             endB = idxB;
-    //             currentType = type;
+    //             std::vector<InfluenceInfo> segment;
+    //             segment.push_back(influencePointsBA[i][j]);
+    //             influenceSegmentsBA.push_back(segment);
+    //             continue;
+    //         }
+
+    //         bool added = false;
+
+    //         for (int k = 0; k < influenceSegmentsBA.size(); ++k)
+    //         {
+
+    //             int endA = influenceSegmentsBA[k].back().indexA;
+    //             int endB = influenceSegmentsBA[k].back().indexB;
+    //             bool currentType = influenceSegmentsBA[k].back().Infulencetype;
+
+    //             int dis_A = std::abs(influencePointsBA[i][j].indexA - endA);
+
+    //             if (influencePointsBA[i][j].indexB == endB + 1 && dis_A <= 5 && influencePointsBA[i][j].Infulencetype == currentType)
+    //             {
+    //                 influenceSegmentsBA[k].push_back(influencePointsBA[i][j]);
+    //                 added = true;
+    //                 break;
+    //             }
+    //         }
+    //         if(!added)
+    //         {
+    //             std::vector<InfluenceInfo> segment2;
+    //             segment2.push_back(influencePointsBA[i][j]);
+    //             influenceSegmentsBA.push_back(segment2);
     //         }
     //     }
     // }
+
+
+    // //输出打印influenceSegmentsBA用以调试
+    // for (int i = 0; i < influenceSegmentsBA.size(); ++i)
+    // {
+    //     for (int j = 0; j < influenceSegmentsBA[i].size(); ++j)
+    //     {
+    //         std::cout << "indexB: " << influenceSegmentsBA[i][j].indexB << " indexA: " << influenceSegmentsBA[i][j].indexA << " Infulencetype: " << influenceSegmentsBA[i][j].Infulencetype << std::endl;
+    //     }
+    //     std::cout << "----------------" << std::endl;
+    // }
+
+
+
+
+}
+
 
 
 
@@ -288,6 +395,16 @@ void MultiTra_Planner::GuropSubstion()
     }
 
 
+    // 输出打印groups用以调试
+    for (const auto& groupEntry : groups) {
+        const std::vector<int>& groupIndices = groupEntry.second;
+        for (size_t i = 0; i < groupIndices.size(); ++i) {
+            std::cout << groupIndices[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+
     // 处理每个分组
     for (const auto& groupEntry : groups) {
         const std::vector<int>& groupIndices = groupEntry.second;
@@ -337,14 +454,36 @@ int main(int argc, char **argv)
     // 通过画图的形式显示合并后的曲线特性
     // path_planner->plotting();
 
-    // 选择一个机器人，比如第一个机器人，发布其路径可视化
+    // // 选择一个机器人，比如第一个机器人，发布其路径可视化
+    // while (ros::ok())
+    // {
+    //     size_t robot_index = 0;
+    //     MultiTraPlanner->path_planner->publishPathVisualization(robot_index, marker_pub, path_pub);
+    //     ros::spinOnce();
+    //     rate.sleep();
+    // }
+
+
+    // 创建一个发布器的数组
+    std::vector<ros::Publisher> path_pubs(MultiTraPlanner->path_planner->merged_curves.size());
+
+    // 为每个曲线初始化一个发布器
+    for (size_t i = 0; i <MultiTraPlanner-> path_planner->merged_curves.size(); i++)
+    {
+        std::stringstream pub_name;
+        pub_name << "path_pub_" << i;
+        path_pubs[i] = nh.advertise<nav_msgs::Path>(pub_name.str(), 1);
+    }
+
+    // 面向所有机器人，发布其路径可视化
     while (ros::ok())
     {
-        size_t robot_index = 0;
-        MultiTraPlanner->path_planner->publishPathVisualization(robot_index, marker_pub, path_pub);
+        MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
         ros::spinOnce();
         rate.sleep();
     }
+
+
 
     return 0;
 }

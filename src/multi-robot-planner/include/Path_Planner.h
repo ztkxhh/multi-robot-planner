@@ -60,6 +60,8 @@ public:
 
     void publishPathVisualization(size_t robot_index, ros::Publisher& marker_pub, ros::Publisher& path_pub);
 
+    void publishPathsVisualization(std::vector<ros::Publisher>& path_pubs, ros::Publisher& marker_pub);
+
     std::vector <std::shared_ptr<Beziercurve>> merged_curves;
 
     void plotting();

@@ -504,6 +504,7 @@ void Path_Planner::inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGr
 
 void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher &marker_pub, ros::Publisher &path_pub)
 {
+    // This is visualization code for one priticular robot
     visualization_msgs::MarkerArray marker_array;
 
     // 创建并发布起点Marker
@@ -552,6 +553,8 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher &
     goal_marker.pose.orientation.w = 1.0;
 
     marker_array.markers.push_back(goal_marker);
+
+
 
     // 创建并发布控制点Marker
     const auto &control_points = all_control_points[robot_index];
@@ -602,6 +605,9 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher &
         }
     }
 
+
+
+
     // 创建并发布走廊Marker
     const auto &corridors = getCorridors(robot_index);
     // for (const auto &corridor : corridors)
@@ -642,12 +648,15 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher &
 
     marker_pub.publish(marker_array);
 
+
+
     // 发布其multiple_curves,即生成的曲线，nav_msgs::Path
     nav_msgs::Path path;
     path.header.frame_id = "map";
     path.header.stamp = ros::Time::now();
     int pose_num = 0;
 
+    // 所有机器人的曲线
     for (size_t i = 0; i < multiple_curves[robot_index].size(); i++)
     {
         pose_num += multiple_curves[robot_index][i]->_total + 1;
@@ -677,8 +686,156 @@ void Path_Planner::publishPathVisualization(size_t robot_index, ros::Publisher &
             pose_idx++;
         }
     }
+
     path_pub.publish(path);
 }
+
+
+void Path_Planner::publishPathsVisualization(std::vector<ros::Publisher>& path_pubs, ros::Publisher &marker_pub)
+{
+    // This is visualization code for one priticular robot
+    visualization_msgs::MarkerArray marker_array;
+
+    for (size_t robot_index = 0; robot_index < merged_curves.size(); ++robot_index)
+    {
+        // 创建并发布起点Marker
+        visualization_msgs::Marker start_marker;
+        start_marker.header.frame_id = "map"; // 根据您的tf配置修改
+        start_marker.header.stamp = ros::Time::now();
+        start_marker.ns = "start_point";
+        start_marker.id = robot_index*2;
+        start_marker.type = visualization_msgs::Marker::SPHERE;
+        start_marker.action = visualization_msgs::Marker::ADD;
+        start_marker.pose.position.x = getStart(robot_index).first * map_data_.info.resolution;
+        start_marker.pose.position.y = getStart(robot_index).second * map_data_.info.resolution;
+        start_marker.pose.position.z = 0.5; // 提升高度以便在rviz中更容易看到
+        start_marker.scale.x = 0.5;         // 设置点的大小
+        start_marker.scale.y = 0.5;
+        start_marker.scale.z = 0.5;
+        start_marker.color.r = 1.0; // 颜色设置为红色(起点)
+        start_marker.color.g = 0.0;
+        start_marker.color.b = 0.0;
+        start_marker.color.a = 1.0; // 透明度
+
+        // 初始化 orientation 为单位四元数
+        start_marker.pose.orientation.x = 0.0;
+        start_marker.pose.orientation.y = 0.0;
+        start_marker.pose.orientation.z = 0.0;
+        start_marker.pose.orientation.w = 1.0;
+        marker_array.markers.push_back(start_marker);
+    }
+
+
+
+    for (size_t robot_index = 0; robot_index < merged_curves.size(); ++robot_index)
+    {
+        // 创建并发布起点Marker
+        visualization_msgs::Marker goal_marker;
+        goal_marker.header.frame_id = "map"; // 根据您的tf配置修改
+        goal_marker.header.stamp = ros::Time::now();
+        goal_marker.ns = "goal_point";
+        goal_marker.id = robot_index*2 + 1;
+        goal_marker.type = visualization_msgs::Marker::SPHERE;
+        goal_marker.action = visualization_msgs::Marker::ADD;
+        goal_marker.pose.position.x = getGoal(robot_index).first * map_data_.info.resolution;
+        goal_marker.pose.position.y = getGoal(robot_index).second * map_data_.info.resolution;
+        goal_marker.pose.position.z = 0.5; // 提升高度以便在rviz中更容易看到
+        goal_marker.scale.x = 0.5;         // 设置点的大小
+        goal_marker.scale.y = 0.5;
+        goal_marker.scale.z = 0.5;
+        goal_marker.color.r = 0.0;
+        goal_marker.color.g = 0.0;
+        goal_marker.color.b = 1.0; // 颜色设置为蓝色(终点)
+        goal_marker.color.a = 1.0; // 透明度
+
+        // 初始化 orientation 为单位四元数
+        goal_marker.pose.orientation.x = 0.0;
+        goal_marker.pose.orientation.y = 0.0;
+        goal_marker.pose.orientation.z = 0.0;
+        goal_marker.pose.orientation.w = 1.0;
+        marker_array.markers.push_back(goal_marker);
+    }
+
+    marker_pub.publish(marker_array);
+
+
+
+
+    // 为每个曲线创建一个Path消息并发布
+    for (size_t i = 0; i < merged_curves.size(); i++)
+    {
+        nav_msgs::Path path;
+        path.header.frame_id = "map";
+        path.header.stamp = ros::Time::now();
+
+        path.poses.resize(merged_curves[i]->_total + 1);
+
+        for (size_t j = 0; j <= merged_curves[i]->_total; j++)
+        {
+            geometry_msgs::PoseStamped pose;
+            pose.header.frame_id = "map";
+            pose.header.stamp = ros::Time::now();
+            pose.pose.position.x = merged_curves[i]->_points[j].first;
+            pose.pose.position.y = merged_curves[i]->_points[j].second;
+            pose.pose.position.z = 1.0;
+            pose.pose.orientation.x = 0.0;
+            pose.pose.orientation.y = 0.0;
+            pose.pose.orientation.z = 0.0;
+            pose.pose.orientation.w = 1.0;
+            path.poses[j] = pose;
+        }
+
+        path_pubs[i].publish(path);
+    }
+
+
+
+    // // 发布merged_curves,即生成的曲线，nav_msgs::Path
+    // nav_msgs::Path path;
+    // path.header.frame_id = "map";
+    // path.header.stamp = ros::Time::now();
+    // int pose_num = 0;
+
+    // // 所有机器人的曲线
+    // for (size_t i = 0; i < merged_curves.size(); i++)
+    // {
+    //     pose_num += merged_curves[i]->_total + 1;
+    // }
+
+    // path.poses.resize(pose_num);
+
+    // int pose_idx = 0;
+
+    // for (size_t i = 0; i < merged_curves.size(); i++)
+    // {
+    //     for (size_t j = 0; j <= merged_curves[i]->_total; j++)
+    //     {
+    //         geometry_msgs::PoseStamped pose;
+    //         pose.header.frame_id = "map";
+    //         pose.header.stamp = ros::Time::now();
+    //         // pose.pose.position.x = merged_curves[i]->_points[j].first * map_data_.info.resolution;
+    //         // pose.pose.position.y = merged_curves[i]->_points[j].second * map_data_.info.resolution;
+    //         pose.pose.position.x = merged_curves[i]->_points[j].first;
+    //         pose.pose.position.y = merged_curves[i]->_points[j].second;
+    //         pose.pose.position.z = 1.0;
+    //         pose.pose.orientation.x = 0.0;
+    //         pose.pose.orientation.y = 0.0;
+    //         pose.pose.orientation.z = 0.0;
+    //         pose.pose.orientation.w = 1.0;
+    //         path.poses[pose_idx] = pose;
+
+    //         pose_idx++;
+    //     }
+    // }
+
+    // path_pub.publish(path);
+
+}
+
+
+
+
+
 
 int Path_Planner::MultiRobotTraGen(
     const std::vector<std::vector<std::vector<int>>> &corridors, // 每个corridor：std::vector<int>{min_x, max_x, min_y, max_y}
