@@ -47,6 +47,7 @@ MultiTra_Planner::MultiTra_Planner(ros::NodeHandle& nh)
 
     GuropSubstion();
 
+    visualization_test(nh);
 }
 
 
@@ -97,7 +98,6 @@ bool MultiTra_Planner::computeInfluenceType(const Beziercurve& a, const Beziercu
 
 
 
-
 void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold) 
 {
     InfluenceSegment seg;
@@ -110,6 +110,8 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
     double threshold2 = threshold * threshold;
 
     std::vector<std::vector<bool>> influenceMatrix(nA, std::vector<bool>(nB, false));
+    std::vector<std::vector<bool>> influenceMatrix2(nB, std::vector<bool>(nA, false));
+
 
     for (int i = 0; i < nA; ++i)
     {
@@ -119,11 +121,130 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
             double dist2 = dx * dx + dy * dy;
             if (dist2 < threshold2) {
                 influenceMatrix[i][j] = true;
+                influenceMatrix2[j][i] = true;
+
             }
         }
     }
 
-    // 收集a_ahead_b情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线A上是连续的
+
+    std::vector<std::vector<InfluenceInfo>> AB = seg_processing(a, b, influenceMatrix);
+
+    std::vector<std::vector<InfluenceInfo>> BA = seg_processing(b, a, influenceMatrix2);
+
+    int sizeAB = AB.size();
+    int sizeBA = BA.size();
+
+    if (sizeAB != sizeBA)
+    {
+        ROS_WARN("Number of influence segments between curve %d and curve %d are not equal", idxA, idxB);
+    }
+
+
+    for (int i = 0; i < sizeAB; ++i)
+    {
+
+        bool seg_ab_type = AB[i][0].Infulencetype;
+        int seg_ab_size = AB[i].size();
+        int start_ab_idx_a = AB[i][0].indexA;
+        int end_ab_idx_a = AB[i][seg_ab_size - 1].indexA;
+        int start_ab_idx_b = AB[i][0].indexB;
+        int end_ab_idx_b = AB[i][0].indexB;
+        for (int j = 1; j < seg_ab_size; ++j)
+        {
+            start_ab_idx_b = min(start_ab_idx_b, AB[i][j].indexB);
+            end_ab_idx_b = max(end_ab_idx_b, AB[i][j].indexB);
+        }
+
+        for (int k = 0; k < sizeBA; ++k)
+        {
+            bool seg_ba_type = BA[k][0].Infulencetype;
+            int seg_ba_size = BA[k].size();
+            int start_ba_idx_b = BA[k][0].indexA;
+            int end_ba_idx_b = BA[k][seg_ba_size - 1].indexA;
+            int start_ba_idx_a = BA[k][0].indexB;
+            int end_ba_idx_a = BA[k][0].indexB;
+            for (int j = 1; j < seg_ba_size; ++j)
+            {
+                start_ba_idx_a = min(start_ba_idx_a, BA[k][j].indexB);
+                end_ba_idx_a = max(end_ba_idx_a, BA[k][j].indexB);
+            }
+
+
+            if (seg_ab_type == seg_ba_type )
+            {
+                bool overlap = (start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b);
+                if (overlap)
+                {
+                    if (seg_ab_type == true) // acute
+                    {
+                        double cof_ab;
+                        double cof_ba;
+                        for (int m = 0; m < seg_ab_size; ++m)
+                        {
+                            cof_ab = 10.0;
+                            // a_ahead_b
+                            if (a._duration[AB[i][m].indexA] == 0)
+                            {
+                                ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                                continue;
+                            }
+                            cof_ab = min(cof_ab, b._duration[AB[i][m].indexB] / a._duration[AB[i][m].indexA]);
+                        }
+
+                        for ( int n = 0; n < seg_ba_size; ++n)
+                        {
+                            cof_ba = 10.0;
+
+                            if (b._duration[BA[k][n].indexB] == 0)
+                            {
+                                ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                                continue;
+                            }
+                            // b_ahead_a
+                            cof_ba = min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
+                        }
+
+                        influncepair pair;
+                        pair.a_head_b = cof_ab;
+                        pair.b_ahed_a = cof_ba;
+                        seg.influencePairs.push_back(pair);
+                    }
+                    else // non-acute
+                    {
+
+                        double cof_ab = b._duration[AB[i][seg_ab_size-1].indexB] / a._duration[AB[i][seg_ab_size-1].indexA];
+
+                        double cof_ba = a._duration[BA[k][seg_ba_size-1].indexB] / b._duration[BA[k][seg_ba_size-1].indexA];
+
+                        influncepair pair;
+                        pair.a_head_b = cof_ab;
+                        pair.b_ahed_a = cof_ba;
+                        seg.influencePairs.push_back(pair);
+                    }
+                }
+            }
+        }
+    }
+
+
+    influenceSegments.push_back(seg);
+
+
+
+}
+
+
+
+
+std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const Beziercurve& a, const Beziercurve& b, std::vector<std::vector<bool>>& influenceMatrix)
+{
+
+    int nA = a._points.size();
+    int nB = b._points.size();
+
+
+    // 收集a_ahead_b情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线a上是连续的
     std::vector<std::vector<InfluenceInfo>> influencePointsAB;
     influencePointsAB.reserve(nA);
 
@@ -139,19 +260,25 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
         std::vector<int> firstidxB;
 
-        int preidxB = 0;
+        int preidxB = -11;
 
         for (int j = 0; j < nB; ++j)
         {
             if (influenceMatrix[i][j])
             {
                 int dif_j = j - preidxB;
-                if (dif_j > 5)
+                if (dif_j > 10)
                 {
                     firstidxB.push_back(j);
                 }
                 preidxB = j;
             }
+        }
+
+        if (firstidxB.empty())
+        {
+            ++i;
+            continue;
         }
 
         std::vector<InfluenceInfo> element;
@@ -194,8 +321,7 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                 bool currentType = influenceSegmentsAB[k].back().Infulencetype;
 
                 int dis_B = std::abs(influencePointsAB[i][j].indexB - endB);
-
-                if (influencePointsAB[i][j].indexA == endA + 1 && dis_B <= 5 && influencePointsAB[i][j].Infulencetype == currentType)
+                if (influencePointsAB[i][j].Infulencetype == currentType && influencePointsAB[i][j].indexA == endA + 1 && dis_B <= 10)
                 {
                     influenceSegmentsAB[k].push_back(influencePointsAB[i][j]);
                     added = true;
@@ -212,139 +338,160 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
     }
 
 
-
-    //输出打印influenceSegmentsAB用以调试
-    for (int i = 0; i < influenceSegmentsAB.size(); ++i)
-    {
-        for (int j = 0; j < influenceSegmentsAB[i].size(); ++j)
-        {
-            std::cout << "indexA: " << influenceSegmentsAB[i][j].indexA << " indexB: " << influenceSegmentsAB[i][j].indexB << " Infulencetype: " << influenceSegmentsAB[i][j].Infulencetype << std::endl;
-        }
-        std::cout << "----------------" << std::endl;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // 收集b_ahead_a情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线B上是连续的
-    // std::vector<std::vector<InfluenceInfo>> influencePointsBA;
-    // influencePointsBA.reserve(nB);
-
-    // int j = 0;
-    // while (j < nB)
+    // //输出打印influenceSegmentsAB用以调试
+    // ROS_INFO("influenceSegmentsAB size: %lu", influenceSegmentsAB.size());
+    // for (int i = 0; i < influenceSegmentsAB.size(); ++i)
     // {
-    //     while (j < nB && std::none_of(influenceMatrix.begin(), influenceMatrix.end(), [j](const std::vector<bool>& v) { return v[j]; }))
+    //     for (int j = 0; j < influenceSegmentsAB[i].size(); ++j)
     //     {
-    //         ++j;
-    //     }
-    //     if (j >= nB)
-    //         break;
-
-    //     std::vector<int> firstidxA;
-
-    //     int preidxA = 0;
-
-    //     for (int i = 0; i < nA; ++i)
-    //     {
-    //         if (influenceMatrix[i][j])
-    //         {
-    //             int dif_i = i - preidxA;
-    //             if (dif_i > 5)
-    //             {
-    //                 firstidxA.push_back(i);
-    //             }
-    //             preidxA = i;
-    //         }
-    //     }
-
-    //     std::vector<InfluenceInfo> element;
-    //     for (int k = 0; k < firstidxA.size(); ++k)
-    //     {
-    //         element.push_back({firstidxA[k], j, computeInfluenceType(a, b, firstidxA[k], j)});
-    //     }
-    //     influencePointsBA.push_back(element);
-
-
-    //     ++j;
-    // }
-
-
-    // // 收集相互影响的段, 首先初始化一个段，然后遍历所有的影响点，如果与当前任意一个段相邻且影响类型相同，则合并，否则添加一个新的段并将当前影响点作为新段的起点
-    // std::vector<std::vector<InfluenceInfo>> influenceSegmentsBA;
-    // int sizeB = influencePointsBA.size();
-
-    // for (int i = 0 ; i< sizeB; ++i)
-    // {
-    //     int sizeA = influencePointsBA[i].size();
-
-    //     for (int j = 0; j < sizeA; ++j)
-    //     {
-    //         if (influenceSegmentsBA.empty())
-    //         {
-    //             std::vector<InfluenceInfo> segment;
-    //             segment.push_back(influencePointsBA[i][j]);
-    //             influenceSegmentsBA.push_back(segment);
-    //             continue;
-    //         }
-
-    //         bool added = false;
-
-    //         for (int k = 0; k < influenceSegmentsBA.size(); ++k)
-    //         {
-
-    //             int endA = influenceSegmentsBA[k].back().indexA;
-    //             int endB = influenceSegmentsBA[k].back().indexB;
-    //             bool currentType = influenceSegmentsBA[k].back().Infulencetype;
-
-    //             int dis_A = std::abs(influencePointsBA[i][j].indexA - endA);
-
-    //             if (influencePointsBA[i][j].indexB == endB + 1 && dis_A <= 5 && influencePointsBA[i][j].Infulencetype == currentType)
-    //             {
-    //                 influenceSegmentsBA[k].push_back(influencePointsBA[i][j]);
-    //                 added = true;
-    //                 break;
-    //             }
-    //         }
-    //         if(!added)
-    //         {
-    //             std::vector<InfluenceInfo> segment2;
-    //             segment2.push_back(influencePointsBA[i][j]);
-    //             influenceSegmentsBA.push_back(segment2);
-    //         }
-    //     }
-    // }
-
-
-    // //输出打印influenceSegmentsBA用以调试
-    // for (int i = 0; i < influenceSegmentsBA.size(); ++i)
-    // {
-    //     for (int j = 0; j < influenceSegmentsBA[i].size(); ++j)
-    //     {
-    //         std::cout << "indexB: " << influenceSegmentsBA[i][j].indexB << " indexA: " << influenceSegmentsBA[i][j].indexA << " Infulencetype: " << influenceSegmentsBA[i][j].Infulencetype << std::endl;
+    //         std::cout << "indexA: " << influenceSegmentsAB[i][j].indexA << " indexB: " << influenceSegmentsAB[i][j].indexB << " Infulencetype: " << influenceSegmentsAB[i][j].Infulencetype << std::endl;
     //     }
     //     std::cout << "----------------" << std::endl;
     // }
 
 
-
-
+    return influenceSegmentsAB;
 }
 
 
+void MultiTra_Planner::visualization_test(ros::NodeHandle& nh)
+{
 
 
 
+    int vis_hz = 10;
+    double vis_dt = 1.0 / vis_hz;
 
+    int num_robots = curves.size();
+    double max_duration = 0.0;
+    for (int i = 0; i < num_robots; ++i)
+    {
+        max_duration = std::max(max_duration, curves[i]->_duration.back());
+    }
+
+
+    std::vector<std::vector<geometry_msgs::Point>> trajectories;
+    for (int i = 0; i < num_robots; ++i)
+    {
+        std::vector<geometry_msgs::Point> trajectory;
+        double max_dur_i = curves[i]->_duration.back();
+        for (double t = 0.0; t < max_duration; t += vis_dt)
+        {
+
+            geometry_msgs::Point p;
+            if (t == 0.0)
+            {
+                p.x = curves[i]->_points[0].first;
+                p.y = curves[i]->_points[0].second;
+                p.z = 0;
+            }
+
+            if (t > max_dur_i)
+            {
+                p.x = curves[i]->_points.back().first;
+                p.y = curves[i]->_points.back().second;
+                p.z = 0;                break;
+            }
+
+            auto it = std::upper_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), t);
+            int idx = std::distance(curves[i]->_duration.begin(), it);
+            double dif = t - curves[i]->_duration[idx - 1];
+            if (dif < 1e-6)
+            {
+                p.x = curves[i]->_points[idx - 1].first;
+                p.y = curves[i]->_points[idx - 1].second;
+                p.z = 0;
+            }
+            else
+            {
+                p.x = 0.5 * (curves[i]->_points[idx - 1].first + curves[i]->_points[idx].first);
+                p.y = 0.5 * (curves[i]->_points[idx - 1].second + curves[i]->_points[idx].second);
+                p.z = 0;
+            }
+            trajectory.push_back(p);
+        }
+        trajectories.push_back(trajectory);
+    }
+
+
+
+    // 获取最大轨迹长度，以确定循环次数
+    size_t max_length = 0;
+    for (const auto& traj : trajectories)
+    {
+        if (traj.size() > max_length)
+            max_length = traj.size();
+    }
+
+    // 设置发布频率
+    ros::Rate r(10); // 1 Hz
+
+    size_t step = 0;
+    while (ros::ok() && step < max_length)
+    {
+        for (size_t car_id = 0; car_id < trajectories.size(); ++car_id)
+        {
+            const auto& traj = trajectories[car_id];
+
+            // 检查当前小车是否还有未发布的轨迹点
+            if (step < traj.size())
+            {
+                visualization_msgs::Marker marker;
+
+                // 设置Marker的基本信息
+                marker.header.frame_id = "map";
+                marker.header.stamp = ros::Time::now();
+
+                // 使用不同的命名空间和ID来区分不同的小车
+                marker.ns = "car_" + std::to_string(car_id);
+                marker.id = car_id;
+                marker.type = visualization_msgs::Marker::CUBE;
+                marker.action = visualization_msgs::Marker::ADD;
+
+                // 设置小车的位置
+                marker.pose.position.x = traj[step].x;
+                marker.pose.position.y = traj[step].y;
+                marker.pose.position.z = traj[step].z;
+
+                // 设置小车的朝向
+                marker.pose.orientation.x = 0.0;
+                marker.pose.orientation.y = 0.0;
+                marker.pose.orientation.z = 0.0;
+                marker.pose.orientation.w = 1.0;
+
+                // 设置小车的尺寸
+                marker.scale.x = 0.5;
+                marker.scale.y = 0.3;
+                marker.scale.z = 0.2;
+
+                // 设置小车的颜色，给不同的小车不同的颜色
+                marker.color.a = 1.0;
+                if (car_id == 0)
+                {
+                    marker.color.r = 1.0;
+                    marker.color.g = 0.0;
+                    marker.color.b = 0.0; // 红色
+                }
+                else if (car_id == 1)
+                {
+                    marker.color.r = 0.0;
+                    marker.color.g = 0.0;
+                    marker.color.b = 1.0; // 蓝色
+                }
+                // 可以为更多的小车设置不同的颜色
+
+                // 发布Marker消息
+                marker_pub.publish(marker);
+            }
+        }
+
+        // 等待下一个循环
+        ros::spinOnce();
+        r.sleep();
+        ++step;
+    }
+
+}
 
 
 
@@ -420,6 +567,17 @@ void MultiTra_Planner::GuropSubstion()
         }
     }
 
+    // 输出打印influenceSegments用以调试
+    ROS_INFO("influenceSegments size: %lu", influenceSegments.size());
+    for (int i = 0; i < influenceSegments.size(); ++i)
+    {
+        std::cout << "curveAIndex: " << influenceSegments[i].curveAIndex << " curveBIndex: " << influenceSegments[i].curveBIndex << std::endl;
+        for (int j = 0; j < influenceSegments[i].influencePairs.size(); ++j)
+        {
+            std::cout << "a_head_b: " << influenceSegments[i].influencePairs[j].a_head_b << " b_ahed_a: " << influenceSegments[i].influencePairs[j].b_ahed_a << std::endl;
+        }
+        std::cout << "----------------" << std::endl;
+    }
 
 
 }
@@ -430,6 +588,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "path_planner");
     ros::NodeHandle nh;
 
+    // 创建Marker消息的发布器
     auto start_time = std::chrono::high_resolution_clock::now();
 
     std::shared_ptr<MultiTra_Planner> MultiTraPlanner = std::make_shared<MultiTra_Planner>(nh);
@@ -438,6 +597,9 @@ int main(int argc, char **argv)
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
     // 选择一个机器人，比如第一个机器人，发布其multiple_curves,即生成的曲线，nav_msgs::Path
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("visualization_path", 1);
+
+    ros::Publisher mulity_pub = nh.advertise<visualization_msgs::Marker>("multi_car_marker", 10);
+
 
     ros::Rate rate(10);
     while (ros::ok() && (!MultiTraPlanner->path_planner->mapReceived() || !MultiTraPlanner->path_planner->doubleMapReceived()))

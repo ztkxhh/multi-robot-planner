@@ -5,7 +5,7 @@
     <arg name="robot_radius" default="0.1"/>
     <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
 
-    <arg name="robot_count" default="2"/>
+    <arg name="robot_count" default="10"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
@@ -27,8 +27,10 @@
     <arg name ="cem" default = "0.01"/>
     <arg name ="lim_dif" default = "0.05"/>
 
-    <arg name = "influnce_factor" default = "1.2"/>
+    <arg name = "influnce_factor" default = "1.5"/>
     <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
+
+
 
 
 
@@ -40,6 +42,10 @@
     <!-- get the inflated map and publish user map -->
     <node name="map_inflator"   pkg="multi-robot-planner" type="Map_Inflation">
     </node>
+
+    <!-- visual test -->
+    <!-- <node name="visual_test"   pkg="multi-robot-planner" type="viusal_test" output="screen">
+    </node> -->
 
     <!-- generate the start points and goals for robots
     <node name="robot_path_planner"   pkg="multi-robot-planer" type="path_planner" output="screen">
@@ -58,6 +64,10 @@
         <param name="cem"  value="$(arg cem)"/>
         <param name="lim_dif"  value="$(arg lim_dif)"/>
     </node>
+
+
+
+
 
     <!-- Open Rviz to visualize-->
     <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim.rviz" />

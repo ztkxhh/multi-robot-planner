@@ -10,6 +10,9 @@
 #include <nanoflann.hpp>
 #include "Path_Planner.h"
 
+
+
+
 struct InfluenceInfo {
     int indexA;
     int indexB;
@@ -19,8 +22,8 @@ struct InfluenceInfo {
 
 struct influncepair
 {
-    int indexA;
-    int indexB;
+    double a_head_b; // a head to b cofficient
+    double b_ahed_a; // b head to a cofficient
 };
 
 
@@ -28,8 +31,7 @@ struct InfluenceSegment
 {
     int curveAIndex;
     int curveBIndex;
-    std::vector<influncepair> AB;
-    std::vector<influncepair> BA;
+    std::vector<influncepair> influencePairs;
 };
 
 
@@ -74,8 +76,11 @@ private:
 
     bool computeInfluenceType(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB);
 
+    std::vector<std::vector<InfluenceInfo>> seg_processing(const Beziercurve& a, const Beziercurve& b, std::vector<std::vector<bool>>& influenceMatrix);
 
     void GuropSubstion ();
+
+    void visualization_test(ros::NodeHandle& nh);
 
 public:
 
