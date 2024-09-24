@@ -80,13 +80,14 @@ private:
 
     void GuropSubstion ();
 
-    void visualization_test(ros::NodeHandle& nh);
 
 public:
 
     std::shared_ptr<Path_Planner> path_planner;
 
     std::vector<InfluenceSegment> influenceSegments;
+
+    void visualization_test(ros::Publisher &marker_pub);
 
     MultiTra_Planner(ros::NodeHandle& nh);
     ~MultiTra_Planner()=default;
