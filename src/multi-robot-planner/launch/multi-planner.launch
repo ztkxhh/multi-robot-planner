@@ -27,10 +27,8 @@
     <arg name ="cem" default = "0.01"/>
     <arg name ="lim_dif" default = "0.05"/>
 
-    <arg name = "influnce_factor" default = "1.5"/>
+    <arg name = "influnce_factor" default = "1.2"/>
     <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
-
-
 
 
 
@@ -43,9 +41,6 @@
     <node name="map_inflator"   pkg="multi-robot-planner" type="Map_Inflation">
     </node>
 
-    <!-- visual test -->
-    <!-- <node name="visual_test"   pkg="multi-robot-planner" type="viusal_test" output="screen">
-    </node> -->
 
     <!-- generate the start points and goals for robots
     <node name="robot_path_planner"   pkg="multi-robot-planer" type="path_planner" output="screen">

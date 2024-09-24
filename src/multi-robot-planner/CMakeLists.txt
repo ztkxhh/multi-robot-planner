@@ -48,8 +48,6 @@ include_directories(${PYTHON2.7_INLCUDE_DIRS} ${matplot_DIRS})
 add_executable(Map_Inflation src/Map_Inflation.cpp)
 target_link_libraries(Map_Inflation ${catkin_LIBRARIES})
 
-add_executable(viusal_test src/visual_test.cpp)
-target_link_libraries(viusal_test ${catkin_LIBRARIES})
 
 
 add_executable(

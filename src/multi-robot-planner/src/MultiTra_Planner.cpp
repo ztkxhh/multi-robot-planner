@@ -111,7 +111,6 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
     std::vector<std::vector<bool>> influenceMatrix(nA, std::vector<bool>(nB, false));
     std::vector<std::vector<bool>> influenceMatrix2(nB, std::vector<bool>(nA, false));
 
-
     for (int i = 0; i < nA; ++i)
     {
         for (int j = 0; j < nB; ++j) {
@@ -128,7 +127,6 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
 
     std::vector<std::vector<InfluenceInfo>> AB = seg_processing(a, b, influenceMatrix);
-
     std::vector<std::vector<InfluenceInfo>> BA = seg_processing(b, a, influenceMatrix2);
 
     int sizeAB = AB.size();
@@ -142,7 +140,6 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
     for (int i = 0; i < sizeAB; ++i)
     {
-
         bool seg_ab_type = AB[i][0].Infulencetype;
         int seg_ab_size = AB[i].size();
         int start_ab_idx_a = AB[i][0].indexA;
@@ -172,7 +169,7 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
             if (seg_ab_type == seg_ba_type )
             {
-                bool overlap = (start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b);
+                bool overlap = start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b;
                 if (overlap)
                 {
                     if (seg_ab_type == true) // acute
@@ -287,7 +284,6 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
         }
         influencePointsAB.push_back(element);
 
-
         ++i;
     }
 
@@ -374,7 +370,6 @@ void MultiTra_Planner::visualization_test(ros::Publisher &marker_pub)
         double max_dur_i = curves[i]->_duration.back();
         for (double t = 0.0; t < max_duration; t += vis_dt)
         {
-
             geometry_msgs::Point p;
             if (t == 0.0)
             {
@@ -587,7 +582,7 @@ int main(int argc, char **argv)
     ros::Publisher mulity_pub = nh.advertise<visualization_msgs::Marker>("multi_car_marker", 10);
 
 
-    ros::Rate rate(10);
+    ros::Rate rate(1);
     while (ros::ok() && (!MultiTraPlanner->path_planner->mapReceived() || !MultiTraPlanner->path_planner->doubleMapReceived()))
     {
         ros::spinOnce();
@@ -614,7 +609,6 @@ int main(int argc, char **argv)
 
     // 创建一个发布器的数组
     std::vector<ros::Publisher> path_pubs(MultiTraPlanner->path_planner->merged_curves.size());
-
     // 为每个曲线初始化一个发布器
     for (size_t i = 0; i <MultiTraPlanner-> path_planner->merged_curves.size(); i++)
     {
