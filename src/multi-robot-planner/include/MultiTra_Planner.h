@@ -24,6 +24,14 @@ struct influncepair
 {
     double a_head_b; // a head to b cofficient
     double b_ahed_a; // b head to a cofficient
+    int a_b_starta;
+    int a_b_enda;
+    int a_b_startb;
+    int a_b_endb;
+    int b_a_startb;
+    int b_a_endb;
+    int b_a_starta;
+    int b_a_enda;
 };
 
 

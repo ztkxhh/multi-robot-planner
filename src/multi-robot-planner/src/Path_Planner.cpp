@@ -17,6 +17,12 @@ Path_Planner::Path_Planner(ros::NodeHandle &nh) : planner_(nh)
         robot_radius = 0.5;
     }
 
+    if (!nh.getParam("goal_inflation_radio", inf_radio))
+    {
+        ROS_ERROR("Failed to get param 'inf_radio'");
+        inf_radio = 2;
+    }
+
     map_sub_ = nh.subscribe("/inflated_map", 1, &Path_Planner::mapCallback, this);
     double_map_sub_ = nh.subscribe("/double_inflated_map", 1, &Path_Planner::doubleMapCallback, this);
 
@@ -488,9 +494,9 @@ void Path_Planner::removeRedundantCorridors(std::vector<std::pair<std::shared_pt
 
 void Path_Planner::inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGrid &map)
 {
-    for (int dx = -2 * inflation_radius_; dx <= 2 * inflation_radius_; ++dx)
+    for (int dx = -4 * inflation_radius_; dx <= 4 * inflation_radius_; ++dx)
     {
-        for (int dy = -2 * inflation_radius_; dy <= 2 * inflation_radius_; ++dy)
+        for (int dy = -4 * inflation_radius_; dy <= 4 * inflation_radius_; ++dy)
         {
             int x = goal_x + dx;
             int y = goal_y + dy;
@@ -1493,18 +1499,18 @@ void Path_Planner::plotting()
         plt::ylabel("y");
     }
 
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i+merged_curves.size());
-        // 获取曲线的所有点
-        const auto &c1 = merged_curves[i]->DYM.w_t;
-        // 绘制曲线
-        plt::plot(c1);
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i+merged_curves.size());
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->DYM.w_t;
+    //     // 绘制曲线
+    //     plt::plot(c1);
 
-        plt::title("Robot " + std::to_string(i + 1) + " wt");
-        plt::xlabel("x");
-        plt::ylabel("y");
-    }
+    //     plt::title("Robot " + std::to_string(i + 1) + " wt");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
 
 
     for (size_t i = 0; i < merged_curves.size(); ++i)
@@ -1519,10 +1525,63 @@ void Path_Planner::plotting()
         plt::ylabel("y");
     }
 
+
+
+    int vis_hz = 30;
+    double vis_dt = 1.0 / vis_hz;
+
+    int num_robots = merged_curves.size();
+
+    for (int i = 0; i<num_robots; ++i)
+    {
+        std::vector<double> sp_vt;
+        double max_dur_i = merged_curves[i]->_duration.back();
+
+        for (double t = 0.0; t < max_dur_i; t += vis_dt)
+        {
+            auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
+            int idx = std::distance(merged_curves[i]->_duration.begin(), it);
+            double dif = t - merged_curves[i]->_duration[idx - 1];
+            if (dif < 1e-6)
+            {
+                sp_vt.push_back( merged_curves[i]->DYM.v_t[idx - 1]);
+            }
+            else
+            {
+                sp_vt.push_back(0.5 *( merged_curves[i]->DYM.v_t[idx - 1] + merged_curves[i]->DYM.v_t[idx] ));
+            }
+        }
+        sp_vt.push_back( merged_curves[i]->DYM.v_t.back());
+        plt::figure(i + 3 * merged_curves.size());
+        plt::plot(sp_vt);
+        plt::title("Robot " + std::to_string(i + 1) + " sp_vt");
+
+
+
+        std::vector<double> sp_duration;
+        for (double t = 0.0; t < max_dur_i; t += vis_dt)
+        {
+            auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
+            int idx = std::distance(merged_curves[i]->_duration.begin(), it);
+            double dif = t - merged_curves[i]->_duration[idx - 1];
+            if (dif < 1e-6)
+            {
+                sp_duration.push_back( merged_curves[i]->_duration[idx - 1]);
+            }
+            else
+            {
+                sp_duration.push_back(0.5 *( merged_curves[i]->_duration[idx - 1] + merged_curves[i]->_duration[idx] ));
+            }
+        }
+        sp_duration.push_back( merged_curves[i]->_duration.back());
+
+        plt::figure(i + 4 * merged_curves.size());
+        plt::plot(sp_duration);
+        plt::title("Robot " + std::to_string(i + 1) + " sp_duration");
+
+    }
+
     plt::show();
-
-
-
 
 
     // for (size_t i = 0; i < merged_curves.size(); i++)

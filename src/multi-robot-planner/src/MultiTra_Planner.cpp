@@ -172,10 +172,11 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                 bool overlap = start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b;
                 if (overlap)
                 {
+                    double cof_ab;
+                    double cof_ba;
+
                     if (seg_ab_type == true) // acute
                     {
-                        double cof_ab;
-                        double cof_ba;
                         for (int m = 0; m < seg_ab_size; ++m)
                         {
                             cof_ab = 10.0;
@@ -191,7 +192,6 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                         for ( int n = 0; n < seg_ba_size; ++n)
                         {
                             cof_ba = 10.0;
-
                             if (b._duration[BA[k][n].indexB] == 0)
                             {
                                 ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
@@ -200,24 +200,46 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                             // b_ahead_a
                             cof_ba = min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
                         }
-
-                        influncepair pair;
-                        pair.a_head_b = cof_ab;
-                        pair.b_ahed_a = cof_ba;
-                        seg.influencePairs.push_back(pair);
                     }
+                    
                     else // non-acute
                     {
+                        cof_ab = b._duration[AB[i][seg_ab_size-1].indexB] / a._duration[AB[i][seg_ab_size-1].indexA];
 
-                        double cof_ab = b._duration[AB[i][seg_ab_size-1].indexB] / a._duration[AB[i][seg_ab_size-1].indexA];
-
-                        double cof_ba = a._duration[BA[k][seg_ba_size-1].indexB] / b._duration[BA[k][seg_ba_size-1].indexA];
-
-                        influncepair pair;
-                        pair.a_head_b = cof_ab;
-                        pair.b_ahed_a = cof_ba;
-                        seg.influencePairs.push_back(pair);
+                        cof_ba = a._duration[BA[k][seg_ba_size-1].indexB] / b._duration[BA[k][seg_ba_size-1].indexA];
                     }
+
+                    influncepair pair;
+                    pair.a_head_b = cof_ab;
+                    pair.b_ahed_a = cof_ba;
+                    pair.a_b_starta = start_ab_idx_a;
+                    pair.a_b_enda = end_ab_idx_a;
+                    pair.a_b_startb = start_ab_idx_b;
+                    pair.a_b_endb = end_ab_idx_b;
+                    pair.b_a_startb = start_ba_idx_b;
+                    pair.b_a_endb = end_ba_idx_b;
+                    pair.b_a_starta = start_ba_idx_a;
+                    pair.b_a_enda = end_ba_idx_a;
+                    seg.influencePairs.push_back(pair);
+
+                    std::cout<<"--------------"<<std::endl;
+                    ROS_INFO("idxA: %d and %d", idxA, idxB);
+                    ROS_INFO("seg_ab_type: %d", seg_ab_type);
+                    ROS_INFO("a_head_b: %f", pair.a_head_b);
+                    ROS_INFO("b_ahed_a: %f", pair.b_ahed_a);
+                    ROS_INFO("a_b_starta: %d", pair.a_b_starta);
+                    ROS_INFO("a_b_enda: %d", pair.a_b_enda);
+                    ROS_INFO("a_b_startb: %d", pair.a_b_startb);
+                    ROS_INFO("a_b_endb: %d", pair.a_b_endb);
+                    ROS_INFO("b_a_startb: %d", pair.b_a_startb);
+                    ROS_INFO("b_a_endb: %d", pair.b_a_endb);
+                    ROS_INFO("b_a_starta: %d", pair.b_a_starta);
+                    ROS_INFO("b_a_enda: %d", pair.b_a_enda);
+                    std::cout<<"--------------"<<std::endl;
+
+
+
+
                 }
             }
         }
@@ -352,7 +374,7 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
 void MultiTra_Planner::visualization_test(ros::Publisher &marker_pub)
 {
 
-    int vis_hz = 10;
+    int vis_hz = 30;
     double vis_dt = 1.0 / vis_hz;
 
     int num_robots = curves.size();
@@ -382,7 +404,8 @@ void MultiTra_Planner::visualization_test(ros::Publisher &marker_pub)
             {
                 p.x = curves[i]->_points.back().first;
                 p.y = curves[i]->_points.back().second;
-                p.z = 0;                break;
+                p.z = 0;        
+                break;
             }
 
             auto it = std::upper_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), t);
@@ -556,11 +579,13 @@ void MultiTra_Planner::GuropSubstion()
         for (int j = 0; j < influenceSegments[i].influencePairs.size(); ++j)
         {
             std::cout << "a_head_b: " << influenceSegments[i].influencePairs[j].a_head_b << " b_ahed_a: " << influenceSegments[i].influencePairs[j].b_ahed_a << std::endl;
+            std::cout << "a_b_starta: " << influenceSegments[i].influencePairs[j].a_b_starta << " a_b_enda: " << influenceSegments[i].influencePairs[j].a_b_enda << std::endl;
+            std::cout << "a_b_startb: " << influenceSegments[i].influencePairs[j].a_b_startb << " a_b_endb: " << influenceSegments[i].influencePairs[j].a_b_endb << std::endl;
+            std::cout << "b_a_startb: " << influenceSegments[i].influencePairs[j].b_a_startb << " b_a_endb: " << influenceSegments[i].influencePairs[j].b_a_endb << std::endl;
+            std::cout << "b_a_starta: " << influenceSegments[i].influencePairs[j].b_a_starta << " b_a_enda: " << influenceSegments[i].influencePairs[j].b_a_enda << std::endl;
+            std::cout << "----------------" << std::endl;
         }
-        std::cout << "----------------" << std::endl;
     }
-
-
 }
 
 
@@ -594,8 +619,10 @@ int main(int argc, char **argv)
     std::chrono::duration<double> elapsed_time = end_time - start_time;
     ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
 
-    // 通过画图的形式显示合并后的曲线特性
-    // path_planner->plotting();
+
+    // // 通过画图的形式显示合并后的曲线特性
+    // MultiTraPlanner->path_planner->plotting();
+
 
     // // 选择一个机器人，比如第一个机器人，发布其路径可视化
     // while (ros::ok())
@@ -625,6 +652,7 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
     }
+
 
 
 

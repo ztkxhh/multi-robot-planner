@@ -5,6 +5,8 @@
     <arg name="robot_radius" default="0.1"/>
     <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
 
+    <param name="goal_inflation_radio" type= "int" value=" 4"/>
+
     <arg name="robot_count" default="10"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
@@ -19,11 +21,11 @@
 
 
     <!-- limits  vm, wm, atm, awm, arm, cem -->
-    <arg name ="vm" default = "2.0"/>
-    <arg name ="wm" default = "2.0"/>
-    <arg name ="atm" default = "5.0"/>
-    <arg name ="awm" default = "5.0"/>
-    <arg name ="arm" default = "5.0"/>
+    <arg name ="vm" default = "1.0"/>
+    <arg name ="wm" default = "1.0"/>
+    <arg name ="atm" default = "2.0"/>
+    <arg name ="awm" default = "2.0"/>
+    <arg name ="arm" default = "2.0"/>
     <arg name ="cem" default = "0.01"/>
     <arg name ="lim_dif" default = "0.05"/>
 
