@@ -545,10 +545,13 @@ void MultiTra_Planner::GuropSubstion()
     // 输出打印groups用以调试
     for (const auto& groupEntry : groups) {
         const std::vector<int>& groupIndices = groupEntry.second;
+        std::cout << "Group: ";
         for (size_t i = 0; i < groupIndices.size(); ++i) {
             std::cout << groupIndices[i] << " ";
         }
         std::cout << std::endl;
+        std::cout << "----------------" << std::endl;
+
     }
 
 
@@ -567,8 +570,10 @@ void MultiTra_Planner::GuropSubstion()
         }
     }
 
+
     // // 输出打印influenceSegments用以调试
     // ROS_INFO("influenceSegments size: %lu", influenceSegments.size());
+
     // for (int i = 0; i < influenceSegments.size(); ++i)
     // {
     //     std::cout << "curveAIndex: " << influenceSegments[i].curveAIndex << " curveBIndex: " << influenceSegments[i].curveBIndex << std::endl;
@@ -581,7 +586,12 @@ void MultiTra_Planner::GuropSubstion()
     //     }
     // }
 
+    MILP_Adujust();
+
 }
+
+
+
 
 
 void MultiTra_Planner::MILP_Adujust()
@@ -604,149 +614,147 @@ void MultiTra_Planner::MILP_Adujust()
     // 如果需要，可以将 unordered_set 转换回 vector
     std::vector<int> curves_idxs(curves_idxs_set.begin(), curves_idxs_set.end());
 
+    for (int i = 0; i < curves_idxs.size(); ++i)
+    {
+        std::cout << curves_idxs[i] << " " << std::endl;
+    }
+    std::cout << "----------------" << std::endl;
 
+    try
+    {
+        // Create an Gurobi environment
+        GRBEnv env = GRBEnv(true);
+        //禁止打印输出信息
+        env.set("OutputFlag", "0");
 
-    // try
-    // {
-    //     // Create an Gurobi environment
-    //     GRBEnv env = GRBEnv(true);
-    //     //禁止打印输出信息
-    //     env.set("OutputFlag", "0");
+        env.start();
 
-    //     env.start();
+        // Create an empty model
+        GRBModel model = GRBModel(env);
 
-    //     // Create an empty model
-    //     GRBModel model = GRBModel(env);
+        model.getEnv().set(GRB_IntParam_Threads, 10);
 
-    //     model.getEnv().set(GRB_IntParam_Threads, 10);
+        int num_curves = curves_idxs.size();
+        // Create variables. first curves_idxs.size() are sacling factors for all influenced curves
+        // and the rest are binary variables for each influence pair
+        std::vector<GRBVar> vars(num_curves+ binary_num);
+        // Create scaling factors for each curve
+        for (int i = 0; i < num_curves; ++i)
+        {
+            vars[i] = model.addVar(1.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);
+        }
+        // Create binary variables for each influence pair
+        for (int i = num_curves; i < num_curves + binary_num; ++i)
+        {
+            vars[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
+        }
 
-    //     int num_curves = curves_idxs.size();
-    //     // Create variables. first curves_idxs.size() are sacling factors for all influenced curves
-    //     // and the rest are binary variables for each influence pair
-    //     std::vector<GRBVar> vars(num_curves+ binary_num);
-    //     // Create scaling factors for each curve
-    //     for (int i = 0; i < num_curves; ++i)
-    //     {
-    //         vars[i] = model.addVar(1.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);
-    //     }
-    //     // Create binary variables for each influence pair
-    //     for (int i = num_curves; i < num_curves + binary_num; ++i)
-    //     {
-    //         vars[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
-    //     }
+        // Set cost function
+        GRBLinExpr objective = 0.0;
+        for (int i = 0; i < num_curves; ++i)
+        {
+            objective += vars[i];
+        }
+        model.setObjective(objective, GRB_MINIMIZE);
 
-    //     // Set cost function
-    //     GRBLinExpr objective = 0.0;
-    //     for (int i = 0; i < num_curves; ++i)
-    //     {
-    //         objective += vars[i];
-    //     }
-    //     model.setObjective(objective, GRB_MINIMIZE);
+        // Add constraints
+        int M = 1000; // A large number for binary constraints
+        double epsilon = 1e-6; // A small number for numerical stability
+        int idx_binary = 0;
+        for (int i = 0; i < seg_size; ++i)
+        {
+            int idx_A = influenceSegments[i].curveAIndex;
+            int idx_B = influenceSegments[i].curveBIndex;
 
-    //     // Add constraints
-    //     int M = 1000; // A large number for binary constraints
-    //     int idx_binary_pair = 0;
-    //     for (int i = 0; i < seg_size; ++i)
-    //     {
-    //         int idx_A = influenceSegments[i].curveAIndex;
-    //         int idx_B = influenceSegments[i].curveBIndex;
+            auto it_A = std::find(curves_idxs.begin(), curves_idxs.end(), idx_A);
+            auto it_B = std::find(curves_idxs.begin(), curves_idxs.end(), idx_B);
+            int idx_A_vars;
+            int idx_B_vars;
 
-    //         auto it_A = std::find(curves_idxs.begin(), curves_idxs.end(), idx_A);
-    //         auto it_B = std::find(curves_idxs.begin(), curves_idxs.end(), idx_B);
-    //         int idx_A_vars;
-    //         int idx_B_vars;
+            if (it_A != curves_idxs.end())
+            {
+                idx_A_vars = std::distance(curves_idxs.begin(), it_A);
+            }
+            else
+            {
+                ROS_WARN("Curve index %d not found in curves_idxs", idx_A);
+            }
 
-    //         if (it_A == curves_idxs.end())
-    //         {
-    //             idx_A_vars = std::distance(curves_idxs.begin(), it_A);
-    //         }
-    //         if (it_B == curves_idxs.end())
-    //         {
-    //             idx_B_vars = std::distance(curves_idxs.begin(), it_B);
-    //         }
+            if (it_B != curves_idxs.end())
+            {
+                idx_B_vars = std::distance(curves_idxs.begin(), it_B);
+            }
+            else
+            {
+                ROS_WARN("Curve index %d not found in curves_idxs", idx_B);
+            }
 
-    //         for (int j = 0; j < influenceSegments[i].influencePairs.size(); ++j)
-    //         {
-    //             double a_head_b = influenceSegments[i].influencePairs[j].a_head_b;
-    //             double b_ahed_a = influenceSegments[i].influencePairs[j].b_ahed_a;
-    //             bool a_b_sa = influenceSegments[i].influencePairs[j].a_b_starta;
-    //             bool a_b_ea = influenceSegments[i].influencePairs[j].a_b_enda;
-    //             bool b_a_sb = influenceSegments[i].influencePairs[j].b_a_startb;
-    //             bool b_a_eb = influenceSegments[i].influencePairs[j].b_a_endb;
+            for (int j = 0; j < influenceSegments[i].influencePairs.size(); ++j)
+            {
+                double a_head_b = influenceSegments[i].influencePairs[j].a_head_b;
+                double b_ahed_a = influenceSegments[i].influencePairs[j].b_ahed_a;
+                bool a_b_sa = influenceSegments[i].influencePairs[j].a_b_starta;
+                // bool a_b_ea = influenceSegments[i].influencePairs[j].a_b_enda;
+                bool b_a_sb = influenceSegments[i].influencePairs[j].b_a_startb;
+                // bool b_a_eb = influenceSegments[i].influencePairs[j].b_a_endb;
 
-    //             if (a_b_sa)
-    //             {
-    //                 model.addConstr(vars[num_curves + idx_binary_pair] == 0.0);
-    //                 model.addConstr(vars[idx_A_vars] < vars[idx_B_vars] * a_head_b);
-    //                 idx_binary_pair += 1;
-    //                 continue;
-    //             }
+                if (a_b_sa)
+                {
+                    // model.addConstr(vars[num_curves + idx_binary] == 0.0);
+                    model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b - epsilon);
+                    idx_binary += 1;
+                    continue;
+                }
 
-    //             if (a_b_ea)
-    //             {
-    //                 model.addConstr(vars[num_curves + idx_binary_pair] == 1.0);
-    //                 model.addConstr(vars[idx_B_vars] > vars[idx_A_vars] * b_ahed_a);
-    //                 idx_binary_pair += 1;
-    //                 continue;
-    //             }
+                // if (a_b_ea)
+                // {
+                //     model.addConstr(vars[num_curves + idx_binary_pair] == 1.0);
+                //     model.addConstr(vars[idx_B_vars] > vars[idx_A_vars] * b_ahed_a);
+                //     idx_binary_pair += 1;
+                //     continue;
+                // }
 
-    //             if (b_a_sb)
-    //             {
-    //                 model.addConstr(vars[num_curves + idx_binary_pair] == 0.0);
-    //                 model.addConstr(vars[idx_B_vars] < vars[idx_A_vars] * b_ahed_a);
-    //                 idx_binary_pair += 1;
-    //                 continue;
-    //             }
+                if (b_a_sb)
+                {
+                    // model.addConstr(vars[num_curves + idx_binary] == 1.0);
+                    model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a - epsilon);
+                    idx_binary += 1;
+                    continue;
+                }
 
+                model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
+                model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
+                idx_binary += 1;
 
+            }
 
+        }
 
+        // Optimize model
+        model.optimize();
 
+        std::cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
 
-    //             // // Add scaling constraints
-    //             // GRBLinExpr scaling_constraint = 0.0;
-    //             // for (int k = idx_A_start; k <= idx_A_end; ++k)
-    //             // {
-    //             //     scaling_constraint += curves[idx_A]->_duration[k] * vars[idx_A];
-    //             // }
-    //             // for (int k = idx_B_start; k <= idx_B_end; ++k)
-    //             // {
-    //             //     scaling_constraint -= curves[idx_B]->_duration[k] * vars[idx_B];
-    //             // }
-    //             // model.addConstr(scaling_constraint <= 0.0);
+        // Get  the optimal scaling factors
+        std::vector<double> scaling_factors(num_curves);
+        for (int i = 0; i < num_curves; ++i)
+        {
+            scaling_factors[i] = vars[i].get(GRB_DoubleAttr_X);
+        }
 
-    //             // // Add binary constraints
-    //             // model.addConstr(vars[num_curves + idx_binary_pair] <= M * vars[idx_A_vars]);
-    //             // model.addConstr(vars[num_curves + idx_binary_pair] <= vars[idx_B_vars]);
-    //             // model.addConstr(vars[num_curves + idx_binary_pair] >= vars[idx_B_vars] - M * (1 - vars[idx_A_vars]));
-    //             // model.addConstr(vars[num_curves + idx_binary_pair] >= 0.0);
+        // Print the optimal scaling factors
+        for (int i = 0; i < num_curves; ++i)
+        {
+            std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << scaling_factors[i] << std::endl;
+        }
+    }
 
-    //             // model.addConstr(vars[num_curves + idx_binary_pair + 1] <= M * vars[idx_B_vars]);
-    //             // model.addConstr(vars[num_curves + idx_binary_pair + 1] <= vars[idx_A_vars]);
-    //             // model.addConstr(vars[num_curves + idx_binary_pair + 1] >= vars[idx_A_vars] - M * (1 - vars[idx_B_vars]));
-    //             // model.addConstr(vars[num_curves + idx_binary_pair + 1] >= 0.0);
+    catch(const GRBException& e)
+    {
+        std::cerr << "Error code = " << e.getErrorCode() << std::endl;
+        std::cerr << e.getMessage() << std::endl;
+    }
 
-    //             // idx_binary_pair += 2;
-    //         }
-
-
-
-
-    //     }
-
-
-
-
-
-
-
-        
-    // }
-    // catch(const std::exception& e)
-    // {
-    //     std::cerr << e.what() << '\n';
-    // }
-    
 }
 
 
@@ -810,7 +818,7 @@ int main(int argc, char **argv)
     // 面向所有机器人，发布其路径可视化
     while (ros::ok())
     {
-        // MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
+        MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
         MultiTraPlanner-> visualization_test(mulity_pub);
         ros::spinOnce();
         rate.sleep();
