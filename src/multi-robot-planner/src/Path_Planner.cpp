@@ -494,9 +494,9 @@ void Path_Planner::removeRedundantCorridors(std::vector<std::pair<std::shared_pt
 
 void Path_Planner::inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGrid &map)
 {
-    for (int dx = -4 * inflation_radius_; dx <= 4 * inflation_radius_; ++dx)
+    for (int dx = -inf_radio * inflation_radius_; dx <= inf_radio * inflation_radius_; ++dx)
     {
-        for (int dy = -4 * inflation_radius_; dy <= 4 * inflation_radius_; ++dy)
+        for (int dy = -inf_radio * inflation_radius_; dy <= inf_radio * inflation_radius_; ++dy)
         {
             int x = goal_x + dx;
             int y = goal_y + dy;
@@ -909,21 +909,21 @@ int Path_Planner::MultiRobotTraGen(
                 for (int j = 0; j < n_poly; j++)
                 {
                     // x 方向的控制点上下界
-                    //检查x方向的边界是否相等
-                    if (corridor[0] == corridor[1])
-                    {
-                        ROS_WARN("Robot %d, Segment %d, Control Point %d, x is same range: [%d, %d]", i, seg, j, corridor[0], corridor[1]);
-                    }
+                    // //检查x方向的边界是否相等
+                    // if (corridor[0] == corridor[1])
+                    // {
+                    //     ROS_WARN("Robot %d, Segment %d, Control Point %d, x is same range: [%d, %d]", i, seg, j, corridor[0], corridor[1]);
+                    // }
                     vars[var_idx] = model.addVar(corridor[0], corridor[1], 0.0, GRB_CONTINUOUS);
                     // ROS_INFO("var_idx: %d, corridor[0]: %d, corridor[1]: %d", var_idx, corridor[0], corridor[1]);
                     var_idx++;
 
                     // y 方向的控制点上下界
-                    //检查y方向的边界是否相等
-                    if (corridor[2] == corridor[3])
-                    {
-                        ROS_WARN("Robot %d, Segment %d, Control Point %d, y is same range: [%d, %d]", i, seg, j, corridor[2], corridor[3]);
-                    }
+                    // //检查y方向的边界是否相等
+                    // if (corridor[2] == corridor[3])
+                    // {
+                    //     ROS_WARN("Robot %d, Segment %d, Control Point %d, y is same range: [%d, %d]", i, seg, j, corridor[2], corridor[3]);
+                    // }
                     vars[var_idx] = model.addVar(corridor[2], corridor[3], 0.0, GRB_CONTINUOUS);
                     // ROS_INFO("var_idx: %d, corridor[2]: %d, corridor[3]: %d", var_idx, corridor[2], corridor[3]);
                     var_idx++;
@@ -1018,7 +1018,7 @@ int Path_Planner::MultiRobotTraGen(
                     model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 2 * vars[base_idx_current + 4 * 2 + dim] + vars[base_idx_current + 3 * 2 + dim] == vars[base_idx_next + 2 * 2 + dim] - 2 * vars[base_idx_next + 1 * 2 + dim] + vars[base_idx_next + 0 * 2 + dim]);
 
                     // 加加速度连续性：(P_6^i - 3P_5^i + 3P_4^i - P_3^i) * 60 = (P_4^{i+1} - 3P_3^{i+1} + 3P_2^{i+1} - P_1^{i+1}) * 60
-                    model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 3 * vars[base_idx_current + 4 * 2 + dim] + 3 * vars[base_idx_current + 3 * 2 + dim] - vars[base_idx_current + 2 * 2 + dim] == vars[base_idx_next + 3 * 2 + dim] - 3 * vars[base_idx_next + 2 * 2 + dim] + 3 * vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
+                    // model.addConstr(vars[base_idx_current + 5 * 2 + dim] - 3 * vars[base_idx_current + 4 * 2 + dim] + 3 * vars[base_idx_current + 3 * 2 + dim] - vars[base_idx_current + 2 * 2 + dim] == vars[base_idx_next + 3 * 2 + dim] - 3 * vars[base_idx_next + 2 * 2 + dim] + 3 * vars[base_idx_next + 1 * 2 + dim] - vars[base_idx_next + 0 * 2 + dim]);
                 }
             }
         }
@@ -1057,43 +1057,7 @@ int Path_Planner::MultiRobotTraGen(
         // }
 
 
-        // // 添加机器人之间的距离约束(只限于首段)
-        // // 对于每一对机器人，如果二者的起点相距小于3.0 * inflation_radius_，则计算它们的首段相同控制点（P_1^i - P_1^j, P_2^i - P_2^j, P_3^i - P_3^j,P_4^i - P_4^j,  P_5^i - P_5^j, P_6^i - P_6^j）之间的距离，并添加约束，使得这个距离的平方大于某个阈值
-        // double min_threshold = 4.0 * inflation_radius_ * inflation_radius_; // 距离的平方
-        // for (int i = 0; i < n; i++)
-        // {
-        //     for (int j = i + 1; j < n; j++)
-        //     {
-        //         if (std::hypot(start_positions[i].first - start_positions[j].first, start_positions[i].second - start_positions[j].second) <= 2.5 * inflation_radius_)
-        //         {
 
-        //             ROS_INFO("Robot %d and Robot %d are too close !", i, j);
-
-        //             int offset_i = 0;
-        //             for (int k = 0; k < i; k++)
-        //             {
-        //                 offset_i += segments_nums[k] * n_poly * 2;
-        //             }
-
-        //             int offset_j = 0;
-        //             for (int k = 0; k < j; k++)
-        //             {
-        //                 offset_j += segments_nums[k] * n_poly * 2;
-        //             }
-
-        //             int base_idx_i = offset_i;
-        //             int base_idx_j = offset_j;
-
-        //             for (int p = 0; p < n_poly; p++)
-        //             {
-        //                 int var_idx_i = base_idx_i + p * 2;
-        //                 int var_idx_j = base_idx_j + p * 2;
-
-        //                 model.addQConstr(vars[var_idx_i] * vars[var_idx_i] - 2 * vars[var_idx_i] * vars[var_idx_j] + vars[var_idx_j] * vars[var_idx_j] + vars[var_idx_i + 1] * vars[var_idx_i + 1] - 2 * vars[var_idx_i + 1] * vars[var_idx_j + 1] + vars[var_idx_j + 1] * vars[var_idx_j + 1] >= min_threshold);
-        //             }
-        //         }
-        //     }
-        // }
 
         // Optimize model
         model.optimize();

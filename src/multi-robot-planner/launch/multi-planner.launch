@@ -2,10 +2,10 @@
 
 
     <!-- Parameters Setting -->
-    <arg name="robot_radius" default="0.1"/>
+    <arg name="robot_radius" default="0.2"/>
     <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
 
-    <param name="goal_inflation_radio" type= "int" value=" 4"/>
+    <param name="goal_inflation_radio" type= "int" value=" 2"/>
 
     <arg name="robot_count" default="10"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
@@ -16,7 +16,7 @@
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
     <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
-    <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
+    <param name="points_num" type= "int" value="150"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
 
 

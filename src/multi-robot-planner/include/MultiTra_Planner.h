@@ -24,14 +24,10 @@ struct influncepair
 {
     double a_head_b; // a head to b cofficient
     double b_ahed_a; // b head to a cofficient
-    int a_b_starta;
-    int a_b_enda;
-    int a_b_startb;
-    int a_b_endb;
-    int b_a_startb;
-    int b_a_endb;
-    int b_a_starta;
-    int b_a_enda;
+    bool a_b_starta; // true :  a is start from the start in a head b; false: a is  not start from the start in a head b
+    bool a_b_enda;   // true :  a is end at the end in a head b; false: a is  not end at the end in a head b
+    bool b_a_startb; // true :  b is start from the start in b head a; false: b is  not start from the start in b head a
+    bool b_a_endb;  // true :  b is end at the end in b head a; false: b is  not end at the end in b head a
 };
 
 
@@ -87,6 +83,8 @@ private:
     std::vector<std::vector<InfluenceInfo>> seg_processing(const Beziercurve& a, const Beziercurve& b, std::vector<std::vector<bool>>& influenceMatrix);
 
     void GuropSubstion ();
+
+    void MILP_Adujust();
 
 
 public:
