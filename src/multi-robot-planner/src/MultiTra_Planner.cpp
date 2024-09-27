@@ -1,5 +1,110 @@
 #include "MultiTra_Planner.h"
 
+double inf = std::numeric_limits<double>::infinity();
+
+
+void MILP_Test()
+{
+    try
+    {
+        // Create an Gurobi environment
+        GRBEnv env = GRBEnv(true);
+        //禁止打印输出信息
+        env.set("OutputFlag", "0");
+
+        env.start();
+
+        // Create an empty model
+        GRBModel model = GRBModel(env);
+
+        model.getEnv().set(GRB_IntParam_Threads, 1);
+
+        // Create variables
+        GRBVar x = model.addVar(1.0, 100, 0.0, GRB_CONTINUOUS, "x");
+        GRBVar y = model.addVar(1.0, 100, 0.0, GRB_CONTINUOUS, "y");
+        GRBVar z1 = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z1");
+        GRBVar z2 = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z2");
+        // GRBVar z3 = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z3");
+        // GRBVar z4 = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z4");
+
+
+
+        // Set cost function
+        GRBLinExpr objective = x + y ;
+        model.setObjective(objective, GRB_MINIMIZE);
+
+
+
+[ INFO] [1727423439.674955631]: idxA: 7 and 21
+[ INFO] [1727423439.674964897]: seg_ab_type: 0
+[ INFO] [1727423439.674972689]: a_head_b: 0.000000
+[ INFO] [1727423439.674978160]: b_ahed_a: 1.331749
+[ INFO] [1727423439.674983404]: a_b_starta: 499   and   a_b_enda: 546
+[ INFO] [1727423439.674989554]: a_b_startb: 0   and   a_b_endb: 47
+[ INFO] [1727423439.674995551]: b_a_startb: 0   and   b_a_endb: 57
+[ INFO] [1727423439.675001678]: b_a_starta: 499   and   b_a_enda: 516
+--------------
+--------------
+[ INFO] [1727423439.675010890]: idxA: 7 and 21
+[ INFO] [1727423439.675017333]: seg_ab_type: 1
+[ INFO] [1727423439.675025766]: a_head_b: 0.862438
+[ INFO] [1727423439.675033671]: b_ahed_a: 0.932570
+[ INFO] [1727423439.675041804]: a_b_starta: 529   and   a_b_enda: 567
+[ INFO] [1727423439.675049760]: a_b_startb: 64   and   a_b_endb: 154
+[ INFO] [1727423439.675056232]: b_a_startb: 58   and   b_a_endb: 159
+[ INFO] [1727423439.675062416]: b_a_starta: 499   and   b_a_enda: 563
+--------------
+
+
+
+
+        int M = 1000; // A large number for binary constraints
+        double epsilon = 1e-5; // A small number for numerical stability
+        double a_head_b_1 = 0.698469;
+        double b_ahed_a_1 = 1.415259;
+        double a_head_b_2 = 0.690567;
+        double b_ahed_a_2 = 1.415259;
+        // double a_head_b_3 = 0.685329;
+        // double b_ahed_a_3 = 1.415259;
+        // double a_head_b_4 = 0.655340;
+        // double b_ahed_a_4 = 1.415259;
+        // Add constraints
+        model.addConstr(x  <= y * a_head_b_1 + M * z1 - epsilon);
+        model.addConstr(y  <= x * b_ahed_a_1 + M * (1 - z1) - epsilon);
+        model.addConstr(x  <= y * a_head_b_2 + M * z2 - epsilon);
+        model.addConstr(y  <= x * b_ahed_a_2 + M * (1 - z2) - epsilon);
+        // model.addConstr(x  <= y * a_head_b_3 + M * z3 - epsilon);
+        // model.addConstr(y  <= x * b_ahed_a_3 + M * (1 - z3) - epsilon);
+        // model.addConstr(x  <= y * a_head_b_4 + M * z4 - epsilon);
+        // model.addConstr(y  <= x * b_ahed_a_4 + M * (1 - z4) - epsilon);
+
+
+        // Optimize model
+        model.optimize();
+
+        std::cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
+        std::cout << x.get(GRB_DoubleAttr_X) << std::endl;
+        std::cout << y.get(GRB_DoubleAttr_X) << std::endl;
+        std::cout << z1.get(GRB_DoubleAttr_X) << std::endl;
+        std::cout << z2.get(GRB_DoubleAttr_X) << std::endl;
+        // std::cout << z3.get(GRB_DoubleAttr_X) << std::endl;
+        // std::cout << z4.get(GRB_DoubleAttr_X) << std::endl;
+    }
+    catch (GRBException e)
+    {
+        std::cout << "Error code = " << e.getErrorCode() << std::endl;
+        std::cout << e.getMessage() << std::endl;
+    }
+    catch (...)
+    {
+        std::cout << "Exception during optimization" << std::endl;
+    }
+}
+
+
+
+
+
 
 // 计算曲线的包围盒
 static void computeBoundingBox(const Beziercurve& curve, double& minX, double& maxX, double& minY, double& maxY) {
@@ -27,7 +132,7 @@ static bool boundingBoxesClose(double& minX1, double& maxX1, double& minY1, doub
 
 MultiTra_Planner::MultiTra_Planner(ros::NodeHandle& nh)
 {
-    path_planner = std::make_shared<Path_Planner>(nh);
+    path_planner = std::make_unique<Path_Planner>(nh);
 
      curves = path_planner->merged_curves;
 
@@ -102,7 +207,7 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
     InfluenceSegment seg;
     seg.curveAIndex = idxA;
     seg.curveBIndex = idxB;
-
+    double epsilon = 1e-4;
     int nA = a._points.size();
     int nB = b._points.size();
 
@@ -172,41 +277,51 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                 bool overlap = start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b;
                 if (overlap)
                 {
-                    double cof_ab;
-                    double cof_ba;
+                    double cof_ab = 5.0;
+                    double cof_ba = 5.0;
 
                     if (seg_ab_type == true) // acute
                     {
                         for (int m = 0; m < seg_ab_size; ++m)
                         {
-                            cof_ab = 10.0;
                             // a_ahead_b
-                            if (a._duration[AB[i][m].indexA] == 0)
+                            if (a._duration[AB[i][m].indexA]<= epsilon)
                             {
                                 // ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
                                 continue;
                             }
-                            cof_ab = min(cof_ab, b._duration[AB[i][m].indexB] / a._duration[AB[i][m].indexA]);
+                            cof_ab = std::min(cof_ab, b._duration[AB[i][m].indexB] / a._duration[AB[i][m].indexA]);
                         }
 
                         for ( int n = 0; n < seg_ba_size; ++n)
                         {
-                            cof_ba = 10.0;
-                            if (b._duration[BA[k][n].indexB] == 0)
+                            if (b._duration[BA[k][n].indexB]  <= epsilon)
                             {
                                 // ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
                                 continue;
                             }
                             // b_ahead_a
-                            cof_ba = min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
+                            cof_ba = std::min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
                         }
                     }
-
                     else // non-acute
                     {
+                        if (a._duration[AB[i][seg_ab_size-1].indexA] <= epsilon)
+                        {
+                            cof_ab = 2.0;
+                        }
+                        else
+                        {
                         cof_ab = b._duration[AB[i][seg_ab_size-1].indexB] / a._duration[AB[i][seg_ab_size-1].indexA];
-
+                        }
+                        if (b._duration[BA[k][seg_ba_size-1].indexA] <= epsilon)
+                        {
+                            cof_ba = 2.0;
+                        }
+                        else
+                        {
                         cof_ba = a._duration[BA[k][seg_ba_size-1].indexB] / b._duration[BA[k][seg_ba_size-1].indexA];
+                        }
                     }
 
                     influncepair pair;
@@ -219,19 +334,17 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
                     seg.influencePairs.push_back(pair);
 
+
+                    // // print for debug
                     // std::cout<<"--------------"<<std::endl;
                     // ROS_INFO("idxA: %d and %d", idxA, idxB);
                     // ROS_INFO("seg_ab_type: %d", seg_ab_type);
                     // ROS_INFO("a_head_b: %f", pair.a_head_b);
                     // ROS_INFO("b_ahed_a: %f", pair.b_ahed_a);
-                    // ROS_INFO("a_b_starta: %d", start_ab_idx_a);
-                    // ROS_INFO("a_b_enda: %d", end_ab_idx_a);
-                    // ROS_INFO("a_b_startb: %d", start_ab_idx_b);
-                    // ROS_INFO("a_b_endb: %d", end_ab_idx_b);
-                    // ROS_INFO("b_a_startb: %d", start_ba_idx_b);
-                    // ROS_INFO("b_a_endb: %d", end_ba_idx_b);
-                    // ROS_INFO("b_a_starta: %d", start_ba_idx_a);
-                    // ROS_INFO("b_a_enda: %d", end_ba_idx_a);
+                    // ROS_INFO("a_b_starta: %d   and   a_b_enda: %d", start_ab_idx_a, end_ab_idx_a);
+                    // ROS_INFO("a_b_startb: %d   and   a_b_endb: %d", start_ab_idx_b, end_ab_idx_b);
+                    // ROS_INFO("b_a_startb: %d   and   b_a_endb: %d", start_ba_idx_b, end_ba_idx_b);
+                    // ROS_INFO("b_a_starta: %d   and   b_a_enda: %d", start_ba_idx_a, end_ba_idx_a);
                     // std::cout<<"--------------"<<std::endl;
 
 
@@ -586,9 +699,22 @@ void MultiTra_Planner::GuropSubstion()
     //     }
     // }
 
-    MILP_Adujust();
+    // MILP_Adujust();
 
+    MILP_Test();
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -614,11 +740,6 @@ void MultiTra_Planner::MILP_Adujust()
     // 如果需要，可以将 unordered_set 转换回 vector
     std::vector<int> curves_idxs(curves_idxs_set.begin(), curves_idxs_set.end());
 
-    for (int i = 0; i < curves_idxs.size(); ++i)
-    {
-        std::cout << curves_idxs[i] << " " << std::endl;
-    }
-    std::cout << "----------------" << std::endl;
 
     try
     {
@@ -641,7 +762,7 @@ void MultiTra_Planner::MILP_Adujust()
         // Create scaling factors for each curve
         for (int i = 0; i < num_curves; ++i)
         {
-            vars[i] = model.addVar(1.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);
+            vars[i] = model.addVar(1.0, 100, 0.0, GRB_CONTINUOUS);
         }
         // Create binary variables for each influence pair
         for (int i = num_curves; i < num_curves + binary_num; ++i)
@@ -659,7 +780,7 @@ void MultiTra_Planner::MILP_Adujust()
 
         // Add constraints
         int M = 1000; // A large number for binary constraints
-        double epsilon = 1e-6; // A small number for numerical stability
+        double epsilon = 1e-5; // A small number for numerical stability
         int idx_binary = 0;
         for (int i = 0; i < seg_size; ++i)
         {
@@ -768,7 +889,7 @@ int main(int argc, char **argv)
     // 创建Marker消息的发布器
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    std::shared_ptr<MultiTra_Planner> MultiTraPlanner = std::make_shared<MultiTra_Planner>(nh);
+    std::unique_ptr<MultiTra_Planner> MultiTraPlanner = std::make_unique<MultiTra_Planner>(nh);
 
     // 选择一个机器人，比如第一个机器人，发布其起止点以及走廊可视化
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
@@ -818,7 +939,7 @@ int main(int argc, char **argv)
     // 面向所有机器人，发布其路径可视化
     while (ros::ok())
     {
-        MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
+        // MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
         MultiTraPlanner-> visualization_test(mulity_pub);
         ros::spinOnce();
         rate.sleep();

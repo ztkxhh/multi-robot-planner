@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <nanoflann.hpp>
 #include "Path_Planner.h"
+#include <limits>
 
 
 
@@ -89,7 +90,7 @@ private:
 
 public:
 
-    std::shared_ptr<Path_Planner> path_planner;
+    std::unique_ptr<Path_Planner> path_planner;
 
     std::vector<InfluenceSegment> influenceSegments;
 
