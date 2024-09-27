@@ -25,10 +25,10 @@ struct influncepair
 {
     double a_head_b; // a head to b cofficient
     double b_ahed_a; // b head to a cofficient
-    bool a_b_starta; // true :  a is start from the start in a head b; false: a is  not start from the start in a head b
-    bool a_b_enda;   // true :  a is end at the end in a head b; false: a is  not end at the end in a head b
-    bool b_a_startb; // true :  b is start from the start in b head a; false: b is  not start from the start in b head a
-    bool b_a_endb;  // true :  b is end at the end in b head a; false: b is  not end at the end in b head a
+    // bool a_b_starta; // true :  a is start from the start in a head b; false: a is  not start from the start in a head b
+    // bool a_b_enda;   // true :  a is end at the end in a head b; false: a is  not end at the end in a head b
+    // bool b_a_startb; // true :  b is start from the start in b head a; false: b is  not start from the start in b head a
+    // bool b_a_endb;  // true :  b is end at the end in b head a; false: b is  not end at the end in b head a
 };
 
 

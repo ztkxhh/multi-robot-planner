@@ -33,39 +33,33 @@ void MILP_Test()
         GRBLinExpr objective = x + y ;
         model.setObjective(objective, GRB_MINIMIZE);
 
-
-
-[ INFO] [1727423439.674955631]: idxA: 7 and 21
-[ INFO] [1727423439.674964897]: seg_ab_type: 0
-[ INFO] [1727423439.674972689]: a_head_b: 0.000000
-[ INFO] [1727423439.674978160]: b_ahed_a: 1.331749
-[ INFO] [1727423439.674983404]: a_b_starta: 499   and   a_b_enda: 546
-[ INFO] [1727423439.674989554]: a_b_startb: 0   and   a_b_endb: 47
-[ INFO] [1727423439.674995551]: b_a_startb: 0   and   b_a_endb: 57
-[ INFO] [1727423439.675001678]: b_a_starta: 499   and   b_a_enda: 516
---------------
---------------
-[ INFO] [1727423439.675010890]: idxA: 7 and 21
-[ INFO] [1727423439.675017333]: seg_ab_type: 1
-[ INFO] [1727423439.675025766]: a_head_b: 0.862438
-[ INFO] [1727423439.675033671]: b_ahed_a: 0.932570
-[ INFO] [1727423439.675041804]: a_b_starta: 529   and   a_b_enda: 567
-[ INFO] [1727423439.675049760]: a_b_startb: 64   and   a_b_endb: 154
-[ INFO] [1727423439.675056232]: b_a_startb: 58   and   b_a_endb: 159
-[ INFO] [1727423439.675062416]: b_a_starta: 499   and   b_a_enda: 563
---------------
-
-
-
+// [ INFO] [1727423439.921922818]: idxA: 27 and 28
+// [ INFO] [1727423439.921933486]: seg_ab_type: 0
+// [ INFO] [1727423439.921941384]: a_head_b: 0.182790
+// [ INFO] [1727423439.921948089]: b_ahed_a: 4.787765
+// [ INFO] [1727423439.921954436]: a_b_starta: 283   and   a_b_enda: 283
+// [ INFO] [1727423439.921960854]: a_b_startb: 20   and   a_b_endb: 20
+// [ INFO] [1727423439.921967264]: b_a_startb: 0   and   b_a_endb: 33
+// [ INFO] [1727423439.921973657]: b_a_starta: 283   and   b_a_enda: 285
+// --------------
+// --------------
+// [ INFO] [1727423439.921984436]: idxA: 27 and 28
+// [ INFO] [1727423439.921994388]: seg_ab_type: 0
+// [ INFO] [1727423439.922002356]: a_head_b: 0.000000
+// [ INFO] [1727423439.922008935]: b_ahed_a: 4.787765
+// [ INFO] [1727423439.922017239]: a_b_starta: 284   and   a_b_enda: 309
+// [ INFO] [1727423439.922025013]: a_b_startb: 0   and   a_b_endb: 6
+// [ INFO] [1727423439.922032710]: b_a_startb: 0   and   b_a_endb: 33
+// [ INFO] [1727423439.922039416]: b_a_starta: 283   and   b_a_enda: 285
 
         int M = 1000; // A large number for binary constraints
         double epsilon = 1e-5; // A small number for numerical stability
-        double a_head_b_1 = 0.698469;
-        double b_ahed_a_1 = 1.415259;
-        double a_head_b_2 = 0.690567;
-        double b_ahed_a_2 = 1.415259;
-        // double a_head_b_3 = 0.685329;
-        // double b_ahed_a_3 = 1.415259;
+        double a_head_b_1 = 0.182790;
+        double b_ahed_a_1 =4.787765;
+        double a_head_b_2 = 0.000000;
+        double b_ahed_a_2 = 4.787765;
+        // double a_head_b_3 = 0.475358;
+        // double b_ahed_a_3 = 1.974138;
         // double a_head_b_4 = 0.655340;
         // double b_ahed_a_4 = 1.415259;
         // Add constraints
@@ -327,10 +321,10 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                     influncepair pair;
                     pair.a_head_b = cof_ab;
                     pair.b_ahed_a = cof_ba;
-                    pair.a_b_starta = (start_ab_idx_a == 0);
-                    pair.a_b_enda = (end_ab_idx_a == nA - 1);
-                    pair.b_a_startb = (start_ba_idx_b == 0);
-                    pair.b_a_endb = (end_ba_idx_b == nB - 1);
+                    // pair.a_b_starta = (start_ab_idx_a == 0);
+                    // pair.a_b_enda = (end_ab_idx_a == nA - 1);
+                    // pair.b_a_startb = (start_ba_idx_b == 0);
+                    // pair.b_a_endb = (end_ba_idx_b == nB - 1);
 
                     seg.influencePairs.push_back(pair);
 
@@ -699,9 +693,9 @@ void MultiTra_Planner::GuropSubstion()
     //     }
     // }
 
-    // MILP_Adujust();
+    MILP_Adujust();
 
-    MILP_Test();
+    // MILP_Test();
 }
 
 
@@ -814,34 +808,34 @@ void MultiTra_Planner::MILP_Adujust()
             {
                 double a_head_b = influenceSegments[i].influencePairs[j].a_head_b;
                 double b_ahed_a = influenceSegments[i].influencePairs[j].b_ahed_a;
-                bool a_b_sa = influenceSegments[i].influencePairs[j].a_b_starta;
+                // bool a_b_sa = influenceSegments[i].influencePairs[j].a_b_starta;
                 // bool a_b_ea = influenceSegments[i].influencePairs[j].a_b_enda;
-                bool b_a_sb = influenceSegments[i].influencePairs[j].b_a_startb;
+                // bool b_a_sb = influenceSegments[i].influencePairs[j].b_a_startb;
                 // bool b_a_eb = influenceSegments[i].influencePairs[j].b_a_endb;
 
-                if (a_b_sa)
-                {
-                    // model.addConstr(vars[num_curves + idx_binary] == 0.0);
-                    model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b - epsilon);
-                    idx_binary += 1;
-                    continue;
-                }
-
-                // if (a_b_ea)
+                // if (a_b_sa)
                 // {
-                //     model.addConstr(vars[num_curves + idx_binary_pair] == 1.0);
-                //     model.addConstr(vars[idx_B_vars] > vars[idx_A_vars] * b_ahed_a);
-                //     idx_binary_pair += 1;
+                //     // model.addConstr(vars[num_curves + idx_binary] == 0.0);
+                //     model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b - epsilon);
+                //     idx_binary += 1;
                 //     continue;
                 // }
 
-                if (b_a_sb)
-                {
-                    // model.addConstr(vars[num_curves + idx_binary] == 1.0);
-                    model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a - epsilon);
-                    idx_binary += 1;
-                    continue;
-                }
+                // // if (a_b_ea)
+                // // {
+                // //     model.addConstr(vars[num_curves + idx_binary_pair] == 1.0);
+                // //     model.addConstr(vars[idx_B_vars] > vars[idx_A_vars] * b_ahed_a);
+                // //     idx_binary_pair += 1;
+                // //     continue;
+                // // }
+
+                // if (b_a_sb)
+                // {
+                //     // model.addConstr(vars[num_curves + idx_binary] == 1.0);
+                //     model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a - epsilon);
+                //     idx_binary += 1;
+                //     continue;
+                // }
 
                 model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
                 model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
