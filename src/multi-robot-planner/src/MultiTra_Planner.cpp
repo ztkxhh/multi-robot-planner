@@ -649,17 +649,17 @@ void MultiTra_Planner::GuropSubstion()
     }
 
 
-    // 输出打印groups用以调试
-    for (const auto& groupEntry : groups) {
-        const std::vector<int>& groupIndices = groupEntry.second;
-        std::cout << "Group: ";
-        for (size_t i = 0; i < groupIndices.size(); ++i) {
-            std::cout << groupIndices[i] << " ";
-        }
-        std::cout << std::endl;
-        std::cout << "----------------" << std::endl;
+    // // 输出打印groups用以调试
+    // for (const auto& groupEntry : groups) {
+    //     const std::vector<int>& groupIndices = groupEntry.second;
+    //     std::cout << "Group: ";
+    //     for (size_t i = 0; i < groupIndices.size(); ++i) {
+    //         std::cout << groupIndices[i] << " ";
+    //     }
+    //     std::cout << std::endl;
+    //     std::cout << "----------------" << std::endl;
 
-    }
+    // }
 
 
     // 处理每个分组
@@ -789,19 +789,12 @@ void MultiTra_Planner::MILP_Adujust()
             {
                 idx_A_vars = std::distance(curves_idxs.begin(), it_A);
             }
-            else
-            {
-                ROS_WARN("Curve index %d not found in curves_idxs", idx_A);
-            }
 
             if (it_B != curves_idxs.end())
             {
                 idx_B_vars = std::distance(curves_idxs.begin(), it_B);
             }
-            else
-            {
-                ROS_WARN("Curve index %d not found in curves_idxs", idx_B);
-            }
+
 
             for (int j = 0; j < influenceSegments[i].influencePairs.size(); ++j)
             {
@@ -820,7 +813,7 @@ void MultiTra_Planner::MILP_Adujust()
         // Optimize model
         model.optimize();
 
-        std::cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
+        // std::cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
 
         // Get  the optimal scaling factors
         std::vector<double> sf(num_curves);
@@ -828,8 +821,11 @@ void MultiTra_Planner::MILP_Adujust()
         {
             sf[i] = vars[i].get(GRB_DoubleAttr_X);
         }
+
         // Get the scaling factors for each curve
         scaling_factors.resize(num_curves);
+
+        // Print the scaling factors
         for (int i = 0; i < num_curves; ++i)
         {
             scaling_factors[i].cur_idx = curves_idxs[i];
@@ -933,7 +929,7 @@ int main(int argc, char **argv)
     // 面向所有机器人，发布其路径可视化
     while (ros::ok())
     {
-        MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
+        // MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
         MultiTraPlanner-> visualization_test(mulity_pub);
         ros::spinOnce();
         rate.sleep();
