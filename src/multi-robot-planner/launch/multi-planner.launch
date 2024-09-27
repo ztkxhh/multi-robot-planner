@@ -16,7 +16,7 @@
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
     <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
-    <param name="points_num" type= "int" value="100"/> <!-- number of points evaluated for each segment-->
+    <param name="points_num" type= "int" value="150"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
 
 
@@ -29,6 +29,7 @@
     <arg name ="cem" default = "0.01"/>
     <arg name ="lim_dif" default = "0.05"/>
 
+    <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
     <arg name = "influnce_factor" default = "1.0"/>
     <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
 

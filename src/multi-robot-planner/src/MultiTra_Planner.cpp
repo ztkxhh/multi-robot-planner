@@ -808,34 +808,7 @@ void MultiTra_Planner::MILP_Adujust()
             {
                 double a_head_b = influenceSegments[i].influencePairs[j].a_head_b;
                 double b_ahed_a = influenceSegments[i].influencePairs[j].b_ahed_a;
-                // bool a_b_sa = influenceSegments[i].influencePairs[j].a_b_starta;
-                // bool a_b_ea = influenceSegments[i].influencePairs[j].a_b_enda;
-                // bool b_a_sb = influenceSegments[i].influencePairs[j].b_a_startb;
-                // bool b_a_eb = influenceSegments[i].influencePairs[j].b_a_endb;
 
-                // if (a_b_sa)
-                // {
-                //     // model.addConstr(vars[num_curves + idx_binary] == 0.0);
-                //     model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b - epsilon);
-                //     idx_binary += 1;
-                //     continue;
-                // }
-
-                // // if (a_b_ea)
-                // // {
-                // //     model.addConstr(vars[num_curves + idx_binary_pair] == 1.0);
-                // //     model.addConstr(vars[idx_B_vars] > vars[idx_A_vars] * b_ahed_a);
-                // //     idx_binary_pair += 1;
-                // //     continue;
-                // // }
-
-                // if (b_a_sb)
-                // {
-                //     // model.addConstr(vars[num_curves + idx_binary] == 1.0);
-                //     model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a - epsilon);
-                //     idx_binary += 1;
-                //     continue;
-                // }
 
                 model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
                 model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
