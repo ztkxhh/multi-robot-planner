@@ -695,7 +695,6 @@ void MultiTra_Planner::GuropSubstion()
 
     MILP_Adujust();
 
-    // MILP_Test();
 }
 
 
@@ -824,17 +823,23 @@ void MultiTra_Planner::MILP_Adujust()
         std::cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << std::endl;
 
         // Get  the optimal scaling factors
-        std::vector<double> scaling_factors(num_curves);
+        std::vector<double> sf(num_curves);
         for (int i = 0; i < num_curves; ++i)
         {
-            scaling_factors[i] = vars[i].get(GRB_DoubleAttr_X);
+            sf[i] = vars[i].get(GRB_DoubleAttr_X);
+        }
+        // Get the scaling factors for each curve
+        scaling_factors.resize(num_curves);
+        for (int i = 0; i < num_curves; ++i)
+        {
+            scaling_factors[i].cur_idx = curves_idxs[i];
+            scaling_factors[i].scale = sf[i];
+            std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << sf[i] << std::endl;
         }
 
-        // Print the optimal scaling factors
-        for (int i = 0; i < num_curves; ++i)
-        {
-            std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << scaling_factors[i] << std::endl;
-        }
+        // Scaling the curves
+        Scaling();
+
     }
 
     catch(const GRBException& e)
@@ -845,6 +850,24 @@ void MultiTra_Planner::MILP_Adujust()
 
 }
 
+void MultiTra_Planner:: Scaling()
+{
+    int cur_num = scaling_factors.size();
+
+    for (int i = 0; i < cur_num; ++i)
+    {
+        int cur_idx = scaling_factors[i].cur_idx;
+        double scale = scaling_factors[i].scale;
+
+        if (scale != 1.0)
+        {
+            for (int j = 0; j < curves[cur_idx]->_duration.size(); ++j)
+            {
+                curves[cur_idx]->_duration[j] *= scale;
+            }
+        }
+    }
+}
 
 
 
@@ -876,7 +899,11 @@ int main(int argc, char **argv)
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_time = end_time - start_time;
-    ROS_INFO("Execution time: %.6f seconds", elapsed_time.count());
+    ROS_INFO("Execution time: %.6f seconds for whole code running.", elapsed_time.count());
+
+     elapsed_time = end_time - start_time - elapsed_time_gene_s_and_goal;
+
+    ROS_INFO("Execution time: %.6f seconds for the propsed Motion Planning Method.", elapsed_time.count());
 
 
     // // 通过画图的形式显示合并后的曲线特性
@@ -906,7 +933,7 @@ int main(int argc, char **argv)
     // 面向所有机器人，发布其路径可视化
     while (ros::ok())
     {
-        // MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
+        MultiTraPlanner->path_planner->publishPathsVisualization(path_pubs, marker_pub);
         MultiTraPlanner-> visualization_test(mulity_pub);
         ros::spinOnce();
         rate.sleep();

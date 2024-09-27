@@ -2,8 +2,15 @@
 #include <random>
 #include <cmath>
 
+std::chrono::high_resolution_clock::time_point start_time_gene_s_and_goal;
+std::chrono::high_resolution_clock::time_point end_time_gene_s_and_goal;
+
+std::chrono::duration<double>   elapsed_time_gene_s_and_goal;
+
 Gen_Starts_Goals::Gen_Starts_Goals(ros::NodeHandle& nh) 
     : nh(nh), map_received(false) {
+
+    start_time_gene_s_and_goal = std::chrono::high_resolution_clock::now();
 
     // 获取机器人数量
     if (!nh.getParam("robot_count", robot_count)) {
@@ -174,6 +181,12 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
             }
         }
     }
+
+    end_time_gene_s_and_goal = std::chrono::high_resolution_clock::now();
+
+
+    elapsed_time_gene_s_and_goal = end_time_gene_s_and_goal - start_time_gene_s_and_goal;
+    ROS_INFO("Execution time: %.6f seconds for generating starts and goals.", elapsed_time_gene_s_and_goal.count());
 }
 
 bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartPositions) {

@@ -13,7 +13,6 @@
 
 
 
-
 struct InfluenceInfo {
     int indexA;
     int indexB;
@@ -29,6 +28,12 @@ struct influncepair
     // bool a_b_enda;   // true :  a is end at the end in a head b; false: a is  not end at the end in a head b
     // bool b_a_startb; // true :  b is start from the start in b head a; false: b is  not start from the start in b head a
     // bool b_a_endb;  // true :  b is end at the end in b head a; false: b is  not end at the end in b head a
+};
+
+struct scaling_factor
+{
+    int cur_idx;
+    double scale;
 };
 
 
@@ -75,6 +80,8 @@ private:
 
     std::vector <std::shared_ptr<Beziercurve>> curves;
 
+    std::vector<scaling_factor> scaling_factors;
+
     bool curvesInfluenceEachOther( const Beziercurve& a, const Beziercurve& b, double threshold);
 
     void processCurvePair(const Beziercurve& a, const Beziercurve& b, int& idxA, int& idxB, double& threshold);
@@ -87,6 +94,7 @@ private:
 
     void MILP_Adujust();
 
+    void Scaling();
 
 public:
 

@@ -7,7 +7,7 @@
 
     <param name="goal_inflation_radio" type= "int" value=" 2"/>
 
-    <arg name="robot_count" default="50"/>
+    <arg name="robot_count" default="10"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
@@ -16,7 +16,7 @@
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
     <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
-    <param name="points_num" type= "int" value="150"/> <!-- number of points evaluated for each segment-->
+    <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
 
 

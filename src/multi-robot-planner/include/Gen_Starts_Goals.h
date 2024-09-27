@@ -4,6 +4,9 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <vector>
+#include<chrono>
+
+extern std::chrono::duration<double> elapsed_time_gene_s_and_goal;
 
 class Gen_Starts_Goals {
 public:
