@@ -51,14 +51,14 @@ target_link_libraries(Map_Inflation ${catkin_LIBRARIES})
 
 
 add_executable(
-  Path_Planner 
+  Motion_Planner 
 src/Path_Planner.cpp 
 src/bezier_base.cpp 
 src/Gen_Starts_Goals.cpp 
 src/Beziercurve.cpp 
 src/MultiTra_Planner.cpp)
-target_include_directories(Path_Planner PRIVATE ${PYTHON2_INCLUDE_DIRS})
-target_link_libraries(Path_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES})
+target_include_directories(Motion_Planner PRIVATE ${PYTHON2_INCLUDE_DIRS})
+target_link_libraries(Motion_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES})
 
 
 

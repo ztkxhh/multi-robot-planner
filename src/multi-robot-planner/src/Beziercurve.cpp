@@ -447,7 +447,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 
 
         double lim_dif;
-        nh.param("/path_planning/lim_dif", lim_dif, 0.01);
+        nh.param("/motion_planning/lim_dif", lim_dif, 0.01);
         double h = 1.0 / this->_total;
 
         for (int i = 0; i < this->_total-2; ++i)

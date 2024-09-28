@@ -1145,8 +1145,8 @@ bool Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
 
     double minimum_order;
     int bezier_order;
-    nh.param("/path_planning/minimum_order", minimum_order, 3.0); // 最小阶数
-    nh.param("/path_planning/bezier_order", bezier_order, 5);     // 最小阶数
+    nh.param("/motion_planning/minimum_order", minimum_order, 3.0); // 最小阶数
+    nh.param("/motion_planning/bezier_order", bezier_order, 5);     // 最小阶数
 
     int _poly_order_min = 3;
     int _poly_order_max = 10;
@@ -1169,8 +1169,8 @@ bool Path_Planner::GenerationControlPoints(ros::NodeHandle &nh)
 
     double w_1;
     double w_2;
-    nh.param("/path_planning/w_1", w_1, 1.0); // 平滑项系数
-    nh.param("/path_planning/w_2", w_2, 1.0); // 长度项系数
+    nh.param("/motion_planning/w_1", w_1, 1.0); // 平滑项系数
+    nh.param("/motion_planning/w_2", w_2, 1.0); // 长度项系数
 
     if (MultiRobotTraGen(allcorridors, Q_jerk, Q_length, w_1, w_2, start_positions, goal_positions, bezier_order) == 1)
     {
@@ -1296,12 +1296,12 @@ void Path_Planner::Time_Optimization(ros::NodeHandle &nh)
     Mergecurve();
 
     Limits lim; // limits -- vm, wm, atm, awm, arm, cem
-    nh.param("/path_planning/vm", lim.v_max, 1.0);
-    nh.param("/path_planning/wm", lim.w_max, 1.0);
-    nh.param("/path_planning/atm", lim.at_max, 5.0);
-    nh.param("/path_planning/awm", lim.aw_max, 5.0);
-    nh.param("/path_planning/arm", lim.ar_max, 5.0);
-    nh.param("/path_planning/cem", lim.cem, 0.05);
+    nh.param("/motion_planning/vm", lim.v_max, 1.0);
+    nh.param("/motion_planning/wm", lim.w_max, 1.0);
+    nh.param("/motion_planning/atm", lim.at_max, 5.0);
+    nh.param("/motion_planning/awm", lim.aw_max, 5.0);
+    nh.param("/motion_planning/arm", lim.ar_max, 5.0);
+    nh.param("/motion_planning/cem", lim.cem, 0.05);
 
     // 为每个机器人的曲线进行初次TOTP
     for (size_t i = 0; i < merged_curves.size(); ++i)
