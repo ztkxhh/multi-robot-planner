@@ -103,7 +103,7 @@ public:
 
     std::vector<InfluenceSegment> influenceSegments;
 
-    void visualization_test(ros::Publisher &marker_pub);
+    void Verification(int& vis_hz);
 
     MultiTra_Planner(ros::NodeHandle& nh);
     ~MultiTra_Planner()=default;

@@ -24,6 +24,7 @@
 #include <tf/transform_broadcaster.h>
 
 
+
 //Euler angle to Quaternion
 geometry_msgs::Quaternion Euler_to_Quat(double roll, double pitch, double yaw)
 {
@@ -34,48 +35,48 @@ geometry_msgs::Quaternion Euler_to_Quat(double roll, double pitch, double yaw)
     return msg_quat;
 }
 
-//Quaternion to one Euler angle
-double Quat_to_Euler(geometry_msgs::Quaternion msg_quat, int sel)
-{
-    tf::Quaternion tf_quat;
-    double roll, pitch, yaw;
-    tf::quaternionMsgToTF(msg_quat, tf_quat);
-    tf::Matrix3x3(tf_quat).getRPY(roll, pitch, yaw);
+// //Quaternion to one Euler angle
+// double Quat_to_Euler(geometry_msgs::Quaternion msg_quat, int sel)
+// {
+//     tf::Quaternion tf_quat;
+//     double roll, pitch, yaw;
+//     tf::quaternionMsgToTF(msg_quat, tf_quat);
+//     tf::Matrix3x3(tf_quat).getRPY(roll, pitch, yaw);
 
-    if (sel==0)
-        return roll;
-    else if (sel==1)
-        return pitch;
-    else if (sel==2)
-        return yaw;
-}
+//     if (sel==0)
+//         return roll;
+//     else if (sel==1)
+//         return pitch;
+//     else if (sel==2)
+//         return yaw;
+// }
 
-//Quaternion to Yaw
-double Quat_to_Yaw(geometry_msgs::Quaternion msg_quat)
-{
-    double yaw;
-    //TF Function Converte to Yaw Angle (Euler Angle)
-    geometry_msgs::Pose msg_pose;
-    msg_pose.orientation=msg_quat;
-    tf::Pose tf_pose;
-    tf::poseMsgToTF(msg_pose, tf_pose);
-    yaw = tf::getYaw(tf_pose.getRotation());
-    return yaw;
-}
+// //Quaternion to Yaw
+// double Quat_to_Yaw(geometry_msgs::Quaternion msg_quat)
+// {
+//     double yaw;
+//     //TF Function Converte to Yaw Angle (Euler Angle)
+//     geometry_msgs::Pose msg_pose;
+//     msg_pose.orientation=msg_quat;
+//     tf::Pose tf_pose;
+//     tf::poseMsgToTF(msg_pose, tf_pose);
+//     yaw = tf::getYaw(tf_pose.getRotation());
+//     return yaw;
+// }
 
-//Calculate Distance in XY plane
-double DIS_XY(double pa_x, double pa_y, double pb_x, double pb_y)
-{
-    double distance;
-    distance=pow(pow(pa_x-pb_x,2)+pow(pa_y-pb_y,2),0.5);
-    return distance;
-}
+// //Calculate Distance in XY plane
+// double DIS_XY(double pa_x, double pa_y, double pb_x, double pb_y)
+// {
+//     double distance;
+//     distance=pow(pow(pa_x-pb_x,2)+pow(pa_y-pb_y,2),0.5);
+//     return distance;
+// }
 
-//Calculate Distance in XYZ plane
-double DIS_XYZ(double pa_x, double pa_y, double pa_z, double pb_x, double pb_y, double pb_z)
-{
-    double distance;
-    distance=pow(pow(pa_x-pb_x,2)+pow(pa_y-pb_y,2)+pow(pa_z-pb_z,2),0.5);
-    return distance;
-}
+// //Calculate Distance in XYZ plane
+// double DIS_XYZ(double pa_x, double pa_y, double pa_z, double pb_x, double pb_y, double pb_z)
+// {
+//     double distance;
+//     distance=pow(pow(pa_x-pb_x,2)+pow(pa_y-pb_y,2)+pow(pa_z-pb_z,2),0.5);
+//     return distance;
+// }
 #endif // COMM_H

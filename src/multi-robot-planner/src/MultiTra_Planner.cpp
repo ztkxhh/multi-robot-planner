@@ -363,132 +363,105 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
 }
 
 
-void MultiTra_Planner::visualization_test(ros::Publisher &marker_pub)
-{
+// void MultiTra_Planner::Verification(int& vis_hz)
+// {
 
-    int vis_hz = 50;
-    double vis_dt = 1.0 / vis_hz;
+//     double vis_dt = 1.0 / vis_hz;
 
-    int num_robots = curves.size();
-    double max_duration = 0.0;
-    for (int i = 0; i < num_robots; ++i)
-    {
-        max_duration = std::max(max_duration, curves[i]->_duration.back());
-    }
-
-
-    std::vector<std::vector<geometry_msgs::Point>> trajectories;
-    for (int i = 0; i < num_robots; ++i)
-    {
-        std::vector<geometry_msgs::Point> trajectory;
-        double max_dur_i = curves[i]->_duration.back();
-
-        for (double t = 0.0; t < max_duration; t += vis_dt)
-        {
-            geometry_msgs::Point p;
-            if (t == 0.0)
-            {
-                p.x = curves[i]->_points[0].first;
-                p.y = curves[i]->_points[0].second;
-                p.z = 0;
-            }
-
-            if (t > max_dur_i)
-            {
-                p.x = curves[i]->_points.back().first;
-                p.y = curves[i]->_points.back().second;
-                p.z = 0;
-                break;
-            }
-
-            auto it = std::upper_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), t);
-            int idx = std::distance(curves[i]->_duration.begin(), it);
-            double dif = t - curves[i]->_duration[idx - 1];
-            if (dif < 1e-6)
-            {
-                p.x = curves[i]->_points[idx - 1].first;
-                p.y = curves[i]->_points[idx - 1].second;
-                p.z = 0.05;
-            }
-            else
-            {
-                p.x = 0.5 * (curves[i]->_points[idx - 1].first + curves[i]->_points[idx].first);
-                p.y = 0.5 * (curves[i]->_points[idx - 1].second + curves[i]->_points[idx].second);
-                p.z = 0;
-            }
-            trajectory.push_back(p);
-        }
-        trajectories.push_back(trajectory);
-    }
+//     int num_robots = curves.size();
+//     double max_duration = 0.0;
+//     for (int i = 0; i < num_robots; ++i)
+//     {
+//         max_duration = std::max(max_duration, curves[i]->_duration.back());
+//     }
 
 
+//     std::vector<std::vector<geometry_msgs::Point>> trajectories;
+//     for (int i = 0; i < num_robots; ++i)
+//     {
+//         std::vector<geometry_msgs::Point> trajectory;
+//         double max_dur_i = curves[i]->_duration.back();
 
-    // 获取最大轨迹长度，以确定循环次数
-    size_t max_length = 0;
-    for (const auto& traj : trajectories)
-    {
-        if (traj.size() > max_length)
-            max_length = traj.size();
-    }
+//         for (double t = 0.0; t < max_duration; t += vis_dt)
+//         {
+//             geometry_msgs::Point p;
+//             if (t == 0.0)
+//             {
+//                 p.x = curves[i]->_points[0].first;
+//                 p.y = curves[i]->_points[0].second;
+//                 p.z = 0;
+//             }
 
-    // 设置发布频率
-    ros::Rate rate(vis_hz);
+//             if (t > max_dur_i)
+//             {
+//                 p.x = curves[i]->_points.back().first;
+//                 p.y = curves[i]->_points.back().second;
+//                 p.z = 0;
+//                 break;
+//             }
 
-    size_t step = 0;
-    while (ros::ok() && step < max_length)
-    {
-        for (size_t car_id = 0; car_id < trajectories.size(); ++car_id)
-        {
-            const auto& traj = trajectories[car_id];
+//             auto it = std::upper_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), t);
+//             int idx = std::distance(curves[i]->_duration.begin(), it);
+//             double dif = t - curves[i]->_duration[idx - 1];
+//             if (dif < 1e-6)
+//             {
+//                 p.x = curves[i]->_points[idx - 1].first;
+//                 p.y = curves[i]->_points[idx - 1].second;
+//                 p.z = 0.05;
+//             }
+//             else
+//             {
+//                 p.x = 0.5 * (curves[i]->_points[idx - 1].first + curves[i]->_points[idx].first);
+//                 p.y = 0.5 * (curves[i]->_points[idx - 1].second + curves[i]->_points[idx].second);
+//                 p.z = 0;
+//             }
+//             trajectory.push_back(p);
+//         }
+//         trajectories.push_back(trajectory);
+//     }
 
-            // 检查当前小车是否还有未发布的轨迹点
-            if (step < traj.size())
-            {
-                visualization_msgs::Marker marker;
 
-                // 设置Marker的基本信息
-                marker.header.frame_id = "map";
-                marker.header.stamp = ros::Time::now();
+//     std::vector<std::vector<double>> v_t;
+//     v_t.resize(num_robots);
+//     // 获取最大轨迹长度，以确定循环次数
+//     size_t max_length = 0;
+//     for (const auto& traj : trajectories)
+//     {
+//         if (traj.size() > max_length)
+//             max_length = traj.size();
+//     }
 
-                // 使用不同的命名空间和ID来区分不同的小车
-                marker.ns = "car_" + std::to_string(car_id);
-                marker.id = car_id;
-                marker.type = visualization_msgs::Marker::SPHERE;
-                marker.action = visualization_msgs::Marker::ADD;
+//     size_t step = 0;
+//     while ( step < max_length-1)
+//     {
+//         for (size_t car_id = 0; car_id < trajectories.size(); ++car_id)
+//         {
+//             const auto& traj = trajectories[car_id];
+//             v_t[car_id].push_back(sqrt(pow(traj[step + 1].x - traj[step].x, 2) + pow(traj[step + 1].y - traj[step].y, 2)) / vis_dt);
 
-                // 设置小车的位置
-                marker.pose.position.x = traj[step].x;
-                marker.pose.position.y = traj[step].y;
-                marker.pose.position.z = traj[step].z;
+//         }
 
-                // 设置小车的朝向
-                marker.pose.orientation.x = 0.0;
-                marker.pose.orientation.y = 0.0;
-                marker.pose.orientation.z = 0.0;
-                marker.pose.orientation.w = 1.0;
+//         ++step;
+//     }
 
-                // 设置小车的尺寸
-                marker.scale.x = robot_radius;
-                marker.scale.y = robot_radius;
-                marker.scale.z = robot_radius;
+//     std::vector<double> v_max(num_robots, 0.0);
 
-                // 设置小车的颜色，不同的小车颜色不同
-                marker.color.a = 1.0;
-                marker.color.r = 1.0 - 0.1 * car_id;
-                marker.color.g = 0.5;
-                marker.color.b = 0.1 * car_id;
+//     for (size_t car_id = 0; car_id < v_t.size(); ++car_id)
+//     {
+//         v_max[car_id] = *std::max_element(v_t[car_id].begin(), v_t[car_id].end());
+//     }
 
-                // 发布Marker消息
-                marker_pub.publish(marker);
-            }
-        }
+//     // 输出打印v_max用以调试
+//     for (int i = 0; i < v_max.size(); ++i)
+//     {
+//         std::cout << "v_max: " << v_max[i] << std::endl;
+//     }
 
-        // 等待下一个循环
-        ros::spinOnce();
-        rate.sleep();
-        ++step;
-    }
-}
+
+// }
+
+
+
 
 
 
@@ -594,10 +567,6 @@ void MultiTra_Planner::GuropSubstion()
 
 
 
-
-
-
-
 void MultiTra_Planner::MILP_Adujust()
 {
     std::unordered_set<int> curves_idxs_set;
@@ -636,8 +605,8 @@ void MultiTra_Planner::MILP_Adujust()
         model.getEnv().set(GRB_DoubleParam_TimeLimit, 10);
         model.getEnv().set(GRB_DoubleParam_MIPGap, 1e-4);
         model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 1e-4);
-        model.getEnv().set(GRB_DoubleParam_Heuristics, 0.5);
-        model.getEnv().set(GRB_IntParam_Presolve, 2);
+        // model.getEnv().set(GRB_DoubleParam_Heuristics, 0.5);
+        // model.getEnv().set(GRB_IntParam_Presolve, 2);
         // model.tune();
 
         int num_curves = curves_idxs.size();
@@ -718,13 +687,13 @@ void MultiTra_Planner::MILP_Adujust()
         // Get the scaling factors for each curve
         scaling_factors.resize(num_curves);
 
-        // // Print the scaling factors for debugging
-        // for (int i = 0; i < num_curves; ++i)
-        // {
-        //     scaling_factors[i].cur_idx = curves_idxs[i];
-        //     scaling_factors[i].scale = sf[i];
-        //     std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << sf[i] << std::endl;
-        // }
+        // Print the scaling factors for debugging
+        for (int i = 0; i < num_curves; ++i)
+        {
+            scaling_factors[i].cur_idx = curves_idxs[i];
+            scaling_factors[i].scale = sf[i];
+            std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << sf[i] << std::endl;
+        }
 
         // Scaling the curves
         Scaling();
@@ -743,17 +712,23 @@ void MultiTra_Planner:: Scaling()
 {
     int cur_num = scaling_factors.size();
 
+
     for (int i = 0; i < cur_num; ++i)
     {
         double scale = scaling_factors[i].scale;
+        int cur_idx = scaling_factors[i].cur_idx;
 
         if (scale != 1.0)
-        {
-            int cur_idx = scaling_factors[i].cur_idx;
+        {   
+            // std::cout<<"----------------"<<std::endl;
+            // ROS_INFO("Curve %d duration is %f before scaling", cur_idx, curves[cur_idx]->_duration.back());
             for (int j = 0; j < curves[cur_idx]->_duration.size(); ++j)
             {
                 curves[cur_idx]->_duration[j] *= scale;
             }
+            // ROS_INFO("Curve %d duration is %f after scaling", cur_idx, curves[cur_idx]->_duration.back());
+            // std::cout<<"----------------"<<std::endl;
+
         }
     }
 
@@ -762,7 +737,65 @@ void MultiTra_Planner:: Scaling()
 
 
 
+// void MultiTra_Planner::Verification(int& vis_hz)
+// {
 
+//     int num_robots = curves.size();
+
+
+//     std::vector<std::vector<double>> d_t;
+//     d_t.resize(num_robots);
+
+//     std::vector<std::vector<double>> v_t;
+//     v_t.resize(num_robots);
+
+
+//     for (int car_id = 0; car_id < num_robots; ++car_id)
+//     {
+//         const auto traj = curves[car_id];
+//         int points_num = traj->_points.size();
+//         std::cout<<"----------------"<<std::endl;
+//         ROS_INFO("The duration of Curve %d is %f", car_id, traj->_duration.back());
+//         std::cout<<"----------------"<<std::endl;
+
+//         double distance = 0.0;
+//         double dt = 0.0;
+//         double vt = 0.0;
+//         for (int i = 0; i < points_num-6; ++i)
+//         {   std::cout<<"i = "<< i << "duration is "<< traj->_duration[i]   <<std::endl;
+//             dt = traj->_duration[i+1] - traj->_duration[i];
+//             distance = sqrt(pow(traj->_points[i+1].first - traj->_points[i].first, 2) + pow(traj->_points[i+1].second - traj->_points[i].second, 2));
+
+//             if (dt != 0.0)
+//             {
+//                 vt = distance / dt;
+//                 v_t[car_id].push_back(vt);
+//             }
+//             else
+//             {
+//                 ROS_WARN("Zero duration detected between i = %d and i = %d, cannot compute velocity", i, i+1);
+//             }
+//             d_t[car_id].push_back(dt);
+
+//         }
+
+//     }
+
+//     std::vector<double> v_max;
+
+
+
+//     // 输出打印v_max用以调试
+//     for (int i = 0; i < num_robots; ++i)
+//     {
+//         double vmax = *std::max_element(v_t[i].begin(), v_t[i].end());
+//         ROS_INFO(" The index of vmax  in v_t[i] is %d", std::distance(v_t[i].begin(), std::max_element(v_t[i].begin(), v_t[i].end())));
+//         v_max.push_back(vmax);
+//         std::cout << "v_max: " << vmax << std::endl;
+//     }
+
+
+// }
 
 
 
@@ -791,8 +824,10 @@ int main(int argc, char **argv)
 
 
 
-    int viual_hz = 20;
-    ros::Rate rate(viual_hz);
+    int visual_hz = 100;
+
+    // MultiTraPlanner->Verification(visual_hz);
+    ros::Rate rate(visual_hz);
     std::unique_ptr<ResultPublisher> resultPublisher_obj =  std::make_unique<ResultPublisher>(nh, MultiTraPlanner);
     double current_time;
     double start_time = ros::Time::now().toSec();

@@ -509,7 +509,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 
     // Calculate T_total
     // this->_T_total[0] = 0;
-    this->_duration[0] = 0;
+    this->_duration[0] = 0.0;
     for (int i = 0; i < this->_total; ++i)
     {
         // this->_T_total[i + 1] = this->_T_total[i] + this->_T_i[i];
