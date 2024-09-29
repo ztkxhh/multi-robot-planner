@@ -363,106 +363,6 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
 }
 
 
-// void MultiTra_Planner::Verification(int& vis_hz)
-// {
-
-//     double vis_dt = 1.0 / vis_hz;
-
-//     int num_robots = curves.size();
-//     double max_duration = 0.0;
-//     for (int i = 0; i < num_robots; ++i)
-//     {
-//         max_duration = std::max(max_duration, curves[i]->_duration.back());
-//     }
-
-
-//     std::vector<std::vector<geometry_msgs::Point>> trajectories;
-//     for (int i = 0; i < num_robots; ++i)
-//     {
-//         std::vector<geometry_msgs::Point> trajectory;
-//         double max_dur_i = curves[i]->_duration.back();
-
-//         for (double t = 0.0; t < max_duration; t += vis_dt)
-//         {
-//             geometry_msgs::Point p;
-//             if (t == 0.0)
-//             {
-//                 p.x = curves[i]->_points[0].first;
-//                 p.y = curves[i]->_points[0].second;
-//                 p.z = 0;
-//             }
-
-//             if (t > max_dur_i)
-//             {
-//                 p.x = curves[i]->_points.back().first;
-//                 p.y = curves[i]->_points.back().second;
-//                 p.z = 0;
-//                 break;
-//             }
-
-//             auto it = std::upper_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), t);
-//             int idx = std::distance(curves[i]->_duration.begin(), it);
-//             double dif = t - curves[i]->_duration[idx - 1];
-//             if (dif < 1e-6)
-//             {
-//                 p.x = curves[i]->_points[idx - 1].first;
-//                 p.y = curves[i]->_points[idx - 1].second;
-//                 p.z = 0.05;
-//             }
-//             else
-//             {
-//                 p.x = 0.5 * (curves[i]->_points[idx - 1].first + curves[i]->_points[idx].first);
-//                 p.y = 0.5 * (curves[i]->_points[idx - 1].second + curves[i]->_points[idx].second);
-//                 p.z = 0;
-//             }
-//             trajectory.push_back(p);
-//         }
-//         trajectories.push_back(trajectory);
-//     }
-
-
-//     std::vector<std::vector<double>> v_t;
-//     v_t.resize(num_robots);
-//     // 获取最大轨迹长度，以确定循环次数
-//     size_t max_length = 0;
-//     for (const auto& traj : trajectories)
-//     {
-//         if (traj.size() > max_length)
-//             max_length = traj.size();
-//     }
-
-//     size_t step = 0;
-//     while ( step < max_length-1)
-//     {
-//         for (size_t car_id = 0; car_id < trajectories.size(); ++car_id)
-//         {
-//             const auto& traj = trajectories[car_id];
-//             v_t[car_id].push_back(sqrt(pow(traj[step + 1].x - traj[step].x, 2) + pow(traj[step + 1].y - traj[step].y, 2)) / vis_dt);
-
-//         }
-
-//         ++step;
-//     }
-
-//     std::vector<double> v_max(num_robots, 0.0);
-
-//     for (size_t car_id = 0; car_id < v_t.size(); ++car_id)
-//     {
-//         v_max[car_id] = *std::max_element(v_t[car_id].begin(), v_t[car_id].end());
-//     }
-
-//     // 输出打印v_max用以调试
-//     for (int i = 0; i < v_max.size(); ++i)
-//     {
-//         std::cout << "v_max: " << v_max[i] << std::endl;
-//     }
-
-
-// }
-
-
-
-
 
 
 
@@ -564,14 +464,11 @@ void MultiTra_Planner::GuropSubstion()
 
 
 
-
-
-
 void MultiTra_Planner::MILP_Adujust()
 {
     std::unordered_set<int> curves_idxs_set;
     int seg_size = influenceSegments.size();
-    curves_idxs_set.reserve(seg_size * 2);
+    curves_idxs_set.reserve(seg_size * 5);
 
     int binary_num = 0;
 
@@ -603,11 +500,9 @@ void MultiTra_Planner::MILP_Adujust()
         model.getEnv().set(GRB_IntParam_Threads, 11);
         // Set time limit and MIP gap
         model.getEnv().set(GRB_DoubleParam_TimeLimit, 10);
-        model.getEnv().set(GRB_DoubleParam_MIPGap, 1e-4);
-        model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 1e-4);
-        // model.getEnv().set(GRB_DoubleParam_Heuristics, 0.5);
-        // model.getEnv().set(GRB_IntParam_Presolve, 2);
-        // model.tune();
+        model.getEnv().set(GRB_DoubleParam_MIPGap, 1e-3);
+        model.getEnv().set(GRB_DoubleParam_MIPGapAbs, 1e-3);
+
 
         int num_curves = curves_idxs.size();
         // Create variables. first curves_idxs.size() are sacling factors for all influenced curves
@@ -624,12 +519,28 @@ void MultiTra_Planner::MILP_Adujust()
             vars[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
         }
 
+        std::vector<double> durations(num_curves);
+        std::vector<double>duration_weithts(num_curves);
+        double max_duration = 0.0;
+        for (int i = 0; i < num_curves; ++i)
+        {
+            durations[i] = curves[curves_idxs[i]]->_duration.back();
+            max_duration = std::max(max_duration, durations[i]);
+        }
+        for (int i = 0; i < num_curves; ++i)
+        {
+            duration_weithts[i] =  durations[i] / max_duration;
+        }
+
+
         // Set cost function
         GRBLinExpr objective = 0.0;
         for (int i = 0; i < num_curves; ++i)
         {
-            objective += vars[i];
+            // objective += vars[i];
             // objective += vars[i] * curves[curves_idxs[i]]->_duration.back();
+            objective += vars[i] * duration_weithts[i];
+
         }
         model.setObjective(objective, GRB_MINIMIZE);
 
@@ -663,6 +574,11 @@ void MultiTra_Planner::MILP_Adujust()
                 double a_head_b = influenceSegments[i].influencePairs[j].a_head_b;
                 double b_ahed_a = influenceSegments[i].influencePairs[j].b_ahed_a;
 
+                if (a_head_b == 0.0 && b_ahed_a == 0.0)
+                {
+                    ROS_WARN("Zero scaling factor detected between curve %d and curve %d, cannot compute influence pair", idx_A, idx_B );
+                    continue;
+                }
 
                 model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
                 model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
@@ -686,13 +602,11 @@ void MultiTra_Planner::MILP_Adujust()
 
         // Get the scaling factors for each curve
         scaling_factors.resize(num_curves);
-
-        // Print the scaling factors for debugging
         for (int i = 0; i < num_curves; ++i)
         {
             scaling_factors[i].cur_idx = curves_idxs[i];
             scaling_factors[i].scale = sf[i];
-            std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << sf[i] << std::endl;
+            // std::cout << "Scaling factor for curve " << curves_idxs[i] << ": " << sf[i] << std::endl;
         }
 
         // Scaling the curves
@@ -705,6 +619,7 @@ void MultiTra_Planner::MILP_Adujust()
         std::cerr << "Error code = " << e.getErrorCode() << std::endl;
         std::cerr << e.getMessage() << std::endl;
     }
+
 
 }
 
@@ -720,20 +635,20 @@ void MultiTra_Planner:: Scaling()
 
         if (scale != 1.0)
         {
-            // std::cout<<"----------------"<<std::endl;
-            // ROS_INFO("Curve %d duration is %f before scaling", cur_idx, curves[cur_idx]->_duration.back());
+            std::cout<<"----------------"<<std::endl;
+            std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " before scaling." << std::endl;
+            std::cout <<"Scaling factor for curve "<< cur_idx << " is "<< scale << std::endl;
             for (int j = 0; j < curves[cur_idx]->_duration.size(); ++j)
             {
                 curves[cur_idx]->_duration[j] *= scale;
-                curves[cur_idx]->_duration[j] *= scale;
-
             }
-            // ROS_INFO("Curve %d duration is %f after scaling", cur_idx, curves[cur_idx]->_duration.back());
-            // std::cout<<"----------------"<<std::endl;
+            std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " after scaling." << std::endl;
+            std::cout<<"----------------"<<std::endl;
 
         }
 
     }
+
 
     PlanningSuccess = true;
 }
@@ -825,30 +740,29 @@ int main(int argc, char **argv)
 
 
     // MultiTraPlanner->path_planner->plotting();
-
-
-    int visual_hz = 50;
-
-    // MultiTraPlanner->Verification(visual_hz);
-    ros::Rate rate(visual_hz);
-    std::unique_ptr<ResultPublisher> resultPublisher_obj =  std::make_unique<ResultPublisher>(nh, MultiTraPlanner);
-    double current_time;
-    double start_time = ros::Time::now().toSec();
-    while (ros::ok() && PlanningSuccess)
+    if (PlanningSuccess)
     {
-        current_time = ros::Time::now().toSec() - start_time;
 
-        
-        resultPublisher_obj->update(current_time);
-        resultPublisher_obj->publish();
-        ros::spinOnce();
-        rate.sleep();
+        int visual_hz = 50;
+
+        // MultiTraPlanner->Verification(visual_hz);
+        ros::Rate rate(visual_hz);
+        std::unique_ptr<ResultPublisher> resultPublisher_obj =  std::make_unique<ResultPublisher>(nh, MultiTraPlanner);
+        double current_time;
+        double start_time = ros::Time::now().toSec();
+        while (ros::ok())
+        {
+            current_time = ros::Time::now().toSec() - start_time;
+
+            resultPublisher_obj->update(current_time);
+            resultPublisher_obj->publish();
+            ros::spinOnce();
+            rate.sleep();
+        }
     }
-
 
     // // 通过画图的形式显示合并后的曲线特性,for debug
     // MultiTraPlanner->path_planner->plotting();
-
 
 
 

@@ -21,14 +21,14 @@
 
     <param name="goal_inflation_radio" type= "int" value=" 2"/>
 
-    <arg name="robot_count" default="100"/>
+    <arg name="robot_count" default="32"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
     <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
 
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
-    <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
+    <arg name="w_2"  default="1.0"/>     <!-- weight of length  -->
 
     <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
@@ -39,9 +39,9 @@
     <arg name ="wm" default = "1.0"/>
     <arg name ="atm" default = "5.0"/>
     <arg name ="awm" default = "5.0"/>
-    <arg name ="arm" default = "10.0"/>
+    <arg name ="arm" default = "5.0"/>
     <arg name ="cem" default = "0.01"/>
-    <arg name ="lim_dif" default = "0.2"/>
+    <arg name ="lim_dif" default = "0.6"/>
 
     <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
     <arg name = "influnce_factor" default = "1.1"/>

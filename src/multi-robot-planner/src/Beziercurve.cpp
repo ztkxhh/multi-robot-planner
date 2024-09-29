@@ -56,7 +56,10 @@ Beziercurve::Beziercurve(const int &total)
     this->_a_i.resize(total + 1); // a_i
     this->_b_i.resize(total);     // b_i
 
-    this->_duration.resize(total + 1); // duration until i-th segement
+    // this->_duration.resize(total + 1); // duration until i-th segement
+    // this->_duration.resize(total); // duration until i-th segement
+    this->_duration.reserve(total + 1); // duration until i-th segement
+
 }
 
 
@@ -229,7 +232,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
     this->Vars.c_14.resize(this->_total-1);
     this->Vars.c_15.resize(this->_total-1);
 
-    this->_T_i.resize(this->_total);
+    this->_T_i.resize(this->_total, 0.0);
 
     this->DYM.v_t.resize(this->_total + 1);
     this->DYM.w_t.resize(this->_total + 1);
@@ -518,11 +521,21 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 
     // Calculate T_total
     // this->_T_total[0] = 0;
-    this->_duration[0] = 0.0;
-    for (int i = 0; i < this->_total; ++i)
+    
+    // this->_duration[0] = 0.0;
+
+    // for (int i = 0; i < this->_total; ++i)
+    // {
+    //     // this->_T_total[i + 1] = this->_T_total[i] + this->_T_i[i];
+    //     this->_duration[i+1] = this->_duration[i] + this->_T_i[i];
+    // }
+
+
+    this->_duration.push_back(0.0);
+    for (int i = 1; i < this->_T_i.size(); ++i)
     {
         // this->_T_total[i + 1] = this->_T_total[i] + this->_T_i[i];
-        this->_duration[i+1] = this->_duration[i] + this->_T_i[i];
+        this->_duration.push_back( this->_duration.back() + this->_T_i[i]);
     }
 
 

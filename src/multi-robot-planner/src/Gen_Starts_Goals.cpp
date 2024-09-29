@@ -193,7 +193,7 @@ bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartP
     const auto& positions_to_check = checkStartPositions ? start_positions : goal_positions;
 
     for (const auto& pos : positions_to_check) {
-        if (std::hypot(x - pos.first, y - pos.second)  < 8 * radius_in_cells) {
+        if (std::hypot(x - pos.first, y - pos.second)  < 10 * radius_in_cells) {
             return true;
         }
     }
