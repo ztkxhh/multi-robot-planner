@@ -21,7 +21,7 @@
 
     <param name="goal_inflation_radio" type= "int" value=" 2"/>
 
-    <arg name="robot_count" default="30"/>
+    <arg name="robot_count" default="100"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
@@ -35,16 +35,16 @@
 
 
     <!-- limits  vm, wm, atm, awm, arm, cem -->
-    <arg name ="vm" default = "0.5"/>
-    <arg name ="wm" default = "0.5"/>
-    <arg name ="atm" default = "2.0"/>
-    <arg name ="awm" default = "2.0"/>
-    <arg name ="arm" default = "2.0"/>
+    <arg name ="vm" default = "1.0"/>
+    <arg name ="wm" default = "1.0"/>
+    <arg name ="atm" default = "5.0"/>
+    <arg name ="awm" default = "5.0"/>
+    <arg name ="arm" default = "10.0"/>
     <arg name ="cem" default = "0.01"/>
-    <arg name ="lim_dif" default = "0.05"/>
+    <arg name ="lim_dif" default = "0.2"/>
 
     <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
-    <arg name = "influnce_factor" default = "1.0"/>
+    <arg name = "influnce_factor" default = "1.1"/>
     <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
 
 

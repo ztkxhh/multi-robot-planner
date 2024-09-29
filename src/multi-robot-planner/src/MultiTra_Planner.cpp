@@ -719,17 +719,20 @@ void MultiTra_Planner:: Scaling()
         int cur_idx = scaling_factors[i].cur_idx;
 
         if (scale != 1.0)
-        {   
+        {
             // std::cout<<"----------------"<<std::endl;
             // ROS_INFO("Curve %d duration is %f before scaling", cur_idx, curves[cur_idx]->_duration.back());
             for (int j = 0; j < curves[cur_idx]->_duration.size(); ++j)
             {
                 curves[cur_idx]->_duration[j] *= scale;
+                curves[cur_idx]->_duration[j] *= scale;
+
             }
             // ROS_INFO("Curve %d duration is %f after scaling", cur_idx, curves[cur_idx]->_duration.back());
             // std::cout<<"----------------"<<std::endl;
 
         }
+
     }
 
     PlanningSuccess = true;
@@ -821,10 +824,10 @@ int main(int argc, char **argv)
 
 
 
+    // MultiTraPlanner->path_planner->plotting();
 
 
-
-    int visual_hz = 100;
+    int visual_hz = 50;
 
     // MultiTraPlanner->Verification(visual_hz);
     ros::Rate rate(visual_hz);

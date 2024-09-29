@@ -43,7 +43,8 @@ private:
     std::pair<double, double> thir_s(double &s);
 
 public:
-
+    
+    int ds; // Based on given total on launch file
 
     int _total;
     double _T_s; // 1 / frenquence

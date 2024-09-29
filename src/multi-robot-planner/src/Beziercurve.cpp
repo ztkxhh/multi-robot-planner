@@ -237,6 +237,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
     this->DYM.at_t.resize(this->_total + 1);
     this->DYM.ar_t.resize(this->_total + 1);
 
+
     /*
     Calculate variables for optimization
     */
@@ -263,6 +264,12 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 
     // Calculate c_2, c_3, c_4, c_5  //
     double h = 1.0 / this->_total;
+
+
+    int p_n;
+    nh.param("points_num", p_n, 100);
+    h =1.0 / p_n;
+
 
     for (int i = 0; i < this->_total; ++i)
     {
@@ -494,6 +501,8 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         Calculate T_i and Get duration
     */
     // Calculate T_i
+
+
     for (int i = 0; i < this->_total; ++i)
     {
         double a = sqrt(this->_a_i[i]) + sqrt(this->_a_i[i + 1]);

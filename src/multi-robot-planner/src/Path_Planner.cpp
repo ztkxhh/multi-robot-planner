@@ -1071,7 +1071,7 @@ int Path_Planner::MultiRobotTraGen(
             model.computeIIS();
 
             // 输出 IIS
-            model.write("/home/zt/multi-robot-planner/src/multi-robot-planner/launch/model.ilp");
+            // model.write("/home/zt/multi-robot-planner/src/multi-robot-planner/launch/model.ilp");
         }
 
         // Get the optimization result
@@ -1099,6 +1099,7 @@ int Path_Planner::MultiRobotTraGen(
                         // 上述一直在用的是栅格坐标，这里要转换成实际的坐标
                         all_control_points[i][seg][p].first = vars[offset + seg * n_poly * 2 + p * 2].get(GRB_DoubleAttr_X) * map_data_.info.resolution;
                         all_control_points[i][seg][p].second = vars[offset + seg * n_poly * 2 + p * 2 + 1].get(GRB_DoubleAttr_X) * map_data_.info.resolution;
+                        // std::cout << "Robot " << i << ", Segment " << seg << ", Control Point " << p << ": (" << all_control_points[i][seg][p].first << ", " << all_control_points[i][seg][p].second << ")" << std::endl;
                     }
                 }
             }
@@ -1346,24 +1347,24 @@ void Path_Planner::plotting()
 
 
 
-    // // _v_s
-    // for (size_t i = 0; i < merged_curves.size(); ++i)
-    // {
-    //     plt::figure(i);
-    //     // 获取曲线的所有点
-    //     const auto &v_s = merged_curves[i]->_v_s;
-    //     // 提取起点和终点
-    //     const auto &start = v_s.front();
-    //     const auto &end = v_s.back();
-    //     // 绘制曲线
-    //     plt::plot(v_s);
-    //     // 标记起点和终点
-    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
-    //     plt::plot({v_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
-    //     plt::title("Robot " + std::to_string(i + 1) + " v_s");
-    //     plt::xlabel("x");
-    //     plt::ylabel("y");
-    // }
+    // _v_s
+    for (size_t i = 0; i < merged_curves.size(); ++i)
+    {
+        plt::figure(i);
+        // 获取曲线的所有点
+        const auto &v_s = merged_curves[i]->_v_s;
+        // 提取起点和终点
+        const auto &start = v_s.front();
+        const auto &end = v_s.back();
+        // 绘制曲线
+        plt::plot(v_s);
+        // 标记起点和终点
+        plt::plot({0}, {start}, "r*"); // 红色星表示起点
+        plt::plot({v_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
+        plt::title("Robot " + std::to_string(i + 1) + " v_s");
+        plt::xlabel("x");
+        plt::ylabel("y");
+    }
 
 
 
@@ -1449,19 +1450,19 @@ void Path_Planner::plotting()
     // }
 
 
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i);
-        // 获取曲线的所有点
-        const auto &c1 = merged_curves[i]->DYM.v_t;
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->DYM.v_t;
 
-        // 绘制曲线
-        plt::plot(c1);
+    //     // 绘制曲线
+    //     plt::plot(c1);
 
-        plt::title("Robot " + std::to_string(i + 1) + " vt");
-        plt::xlabel("x");
-        plt::ylabel("y");
-    }
+    //     plt::title("Robot " + std::to_string(i + 1) + " vt");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
 
     // for (size_t i = 0; i < merged_curves.size(); ++i)
     // {
@@ -1491,7 +1492,7 @@ void Path_Planner::plotting()
 
 
 
-    int vis_hz = 30;
+    int vis_hz = 50;
     double vis_dt = 1.0 / vis_hz;
 
     int num_robots = merged_curves.size();

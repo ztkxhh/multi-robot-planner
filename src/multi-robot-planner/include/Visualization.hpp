@@ -63,6 +63,7 @@ public:
             max_duration = std::max(max_duration, curves[i]->_duration.back());
         }
 
+        ROS_INFO("max_duration: %f", max_duration);
 
         // trajectory
         for(int qi = 0; qi < robot_count; qi++){
@@ -83,17 +84,13 @@ public:
 
     void update(double & current_time)
     {
+
+
         // update the robot position
         for(int i = 0; i < robot_count; ++i)
         {
             auto it = std::lower_bound(curves[i]->_duration.begin(), curves[i]->_duration.end(), current_time);
-            if (it == curves[i]->_duration.end())
-            {
-                inter[i][0] = curves[i]->_points.back().first;
-                inter[i][1] = curves[i]->_points.back().second;
-                inter[i][2] = curves[i]->_theta.back();
-            }
-            else
+            if (it != curves[i]->_duration.end())
             {
                 int idx = it - curves[i]->_duration.begin();
                 if (idx == 0)
@@ -109,11 +106,9 @@ public:
                     inter[i][1] = curves[i]->_points[idx - 1].second + t * (curves[i]->_points[idx].second - curves[i]->_points[idx - 1].second);
                     inter[i][2] = curves[i]->_theta[idx - 1] + t * (curves[i]->_theta[idx] - curves[i]->_theta[idx - 1]);
                 }
-                // inter[i][0] = curves[i]->_points[idx].first;
-                // inter[i][1] = curves[i]->_points[idx].second;
-                // inter[i][2] = curves[i]->_theta[idx];
             }
         }
+
 
         // update trajectory
         update_traj(current_time);
@@ -201,9 +196,9 @@ private:
                     mk.type = visualization_msgs::Marker::MESH_RESOURCE;
                     mk.mesh_resource = std::string("package://multi-robot-planner/chassis.dae");
 
-                    mk.scale.x = robot_radius * 5.0;
-                    mk.scale.y = robot_radius * 5.0;
-                    mk.scale.z = robot_radius * 5.0;
+                    mk.scale.x = robot_radius * 2.0;
+                    mk.scale.y = robot_radius * 2.0;
+                    mk.scale.z = robot_radius * 2.0;
                 }
                 else{
                     mk.type = visualization_msgs::Marker::ARROW;
