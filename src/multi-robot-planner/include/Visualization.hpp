@@ -196,9 +196,9 @@ private:
                     mk.type = visualization_msgs::Marker::MESH_RESOURCE;
                     mk.mesh_resource = std::string("package://multi-robot-planner/chassis.dae");
 
-                    mk.scale.x = robot_radius * 2.0;
-                    mk.scale.y = robot_radius * 2.0;
-                    mk.scale.z = robot_radius * 2.0;
+                    mk.scale.x = robot_radius * 1.5;
+                    mk.scale.y = robot_radius * 1.5;
+                    mk.scale.z = robot_radius * 1.5;
                 }
                 else{
                     mk.type = visualization_msgs::Marker::ARROW;

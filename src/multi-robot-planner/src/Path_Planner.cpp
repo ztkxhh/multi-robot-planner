@@ -497,7 +497,7 @@ void Path_Planner::inflateObstacle(int goal_x, int goal_y, nav_msgs::OccupancyGr
     for (int dx = -inf_radio * inflation_radius_; dx <= inf_radio * inflation_radius_; ++dx)
     {
         for (int dy = -inf_radio * inflation_radius_; dy <= inf_radio * inflation_radius_; ++dy)
-        {
+        {   
             int x = goal_x + dx;
             int y = goal_y + dy;
             if (x >= 0 && x < map.info.width && y >= 0 && y < map.info.height)

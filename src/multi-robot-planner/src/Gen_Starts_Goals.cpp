@@ -189,17 +189,27 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
     ROS_INFO("Execution time: %.6f seconds for generating starts and goals.", elapsed_time_gene_s_and_goal.count());
 }
 
+// bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartPositions) {
+//     const auto& positions_to_check = checkStartPositions ? start_positions : goal_positions;
+
+//     for (const auto& pos : positions_to_check) {
+//         if (std::hypot(x - pos.first, y - pos.second)  < 10 * radius_in_cells) {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
+
 bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartPositions) {
     const auto& positions_to_check = checkStartPositions ? start_positions : goal_positions;
 
     for (const auto& pos : positions_to_check) {
-        if (std::hypot(x - pos.first, y - pos.second)  < 10 * radius_in_cells) {
+        if (std::hypot(x - pos.first, y - pos.second)  < 6 * radius_in_cells) {
             return true;
         }
     }
     return false;
 }
-
 
 
 bool Gen_Starts_Goals::isValidPosition(int x, int y) {

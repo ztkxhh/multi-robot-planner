@@ -17,7 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 catkin_package( )
 
-
+#PCL
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
 
 
 #下面引入FindGUROBI.cmake文件  Gurobi
@@ -45,6 +47,11 @@ include_directories(${PYTHON2.7_INLCUDE_DIRS} ${matplot_DIRS})
 
 
 
+add_executable(map_comparison src/map_comparison.cpp)
+target_link_libraries(map_comparison   ${catkin_LIBRARIES}
+${PCL_LIBRARIES})
+
+
 add_executable(Map_Inflation src/Map_Inflation.cpp)
 target_link_libraries(Map_Inflation ${catkin_LIBRARIES})
 
@@ -59,6 +66,8 @@ src/Beziercurve.cpp
 src/MultiTra_Planner.cpp)
 target_include_directories(Motion_Planner PRIVATE ${PYTHON2_INCLUDE_DIRS})
 target_link_libraries(Motion_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES})
+
+
 
 
 

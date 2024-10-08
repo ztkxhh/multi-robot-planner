@@ -111,7 +111,7 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
     InfluenceSegment seg;
     seg.curveAIndex = idxA;
     seg.curveBIndex = idxB;
-    double epsilon = 1e-4;
+    double epsilon = 1e-3;
     int nA = a._points.size();
     int nB = b._points.size();
 
@@ -206,11 +206,15 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                         cof_ba = std::min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
                     }
 
-                    if (cof_ab == inf || cof_ba == inf)
+                    if (cof_ab == inf || cof_ba == inf  )
                     {
                         ROS_WARN("Infinite influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
                     }
-                    
+
+                    // if (cof_ab == 0 || cof_ba == 0)
+                    // {
+                    //     ROS_WARN("Zero influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                    // }
 
                     influncepair pair;
                     pair.a_head_b = cof_ab;
@@ -497,7 +501,7 @@ void MultiTra_Planner::MILP_Adujust()
         // Create an empty model
         GRBModel model = GRBModel(env);
 
-        model.getEnv().set(GRB_IntParam_Threads, 11);
+        model.getEnv().set(GRB_IntParam_Threads, 8);
         // Set time limit and MIP gap
         model.getEnv().set(GRB_DoubleParam_TimeLimit, 10);
         model.getEnv().set(GRB_DoubleParam_MIPGap, 1e-3);
@@ -579,6 +583,12 @@ void MultiTra_Planner::MILP_Adujust()
                     ROS_WARN("Zero scaling factor detected between curve %d and curve %d, cannot compute influence pair", idx_A, idx_B );
                     continue;
                 }
+                if (a_head_b == inf || b_ahed_a == inf)
+                {
+                    ROS_WARN("Infinite scaling factor detected between curve %d and curve %d, cannot compute influence pair", idx_A, idx_B );
+                    continue;
+                }
+
 
                 model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
                 model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
@@ -635,15 +645,15 @@ void MultiTra_Planner:: Scaling()
 
         if (scale != 1.0)
         {
-            std::cout<<"----------------"<<std::endl;
-            std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " before scaling." << std::endl;
-            std::cout <<"Scaling factor for curve "<< cur_idx << " is "<< scale << std::endl;
+            // std::cout<<"----------------"<<std::endl;
+            // std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " before scaling." << std::endl;
+            // std::cout <<"Scaling factor for curve "<< cur_idx << " is "<< scale << std::endl;
             for (int j = 0; j < curves[cur_idx]->_duration.size(); ++j)
             {
                 curves[cur_idx]->_duration[j] *= scale;
             }
-            std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " after scaling." << std::endl;
-            std::cout<<"----------------"<<std::endl;
+            // std::cout <<"Curve "<< cur_idx << " 's duration is "<< curves[cur_idx]->_duration.back() << " after scaling." << std::endl;
+            // std::cout<<"----------------"<<std::endl;
 
         }
 
