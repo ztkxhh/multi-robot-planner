@@ -1,6 +1,35 @@
 #include "Gen_Starts_Goals.h"
 #include <random>
 #include <cmath>
+#include <fstream>
+#include <vector>
+#include <utility>
+#include <yaml-cpp/yaml.h>
+
+static void savePositions(const std::vector<std::pair<double, double>>& start_positions,
+                   const std::vector<std::pair<double, double>>& goal_positions,
+                   const std::string& filename)
+{
+    std::ofstream outFile(filename);
+    if (!outFile) {
+        std::cerr << "无法打开文件进行写入：" << filename << std::endl;
+        return;
+    }
+
+    size_t robot_count = start_positions.size();
+    outFile << robot_count << std::endl;
+
+    for (size_t i = 0; i < robot_count; ++i) {
+        outFile << start_positions[i].first << " "
+                << start_positions[i].second << " "
+                << goal_positions[i].first  << " "
+                << goal_positions[i].second << std::endl;
+    }
+
+    outFile.close();
+}
+
+
 
 std::chrono::high_resolution_clock::time_point start_time_gene_s_and_goal;
 std::chrono::high_resolution_clock::time_point end_time_gene_s_and_goal;
@@ -23,6 +52,25 @@ Gen_Starts_Goals::Gen_Starts_Goals(ros::NodeHandle& nh)
         ROS_WARN("Failed to get robot_radius, using default value 0.5");
         robot_radius = 0.5; // 默认半径0.5米
     }
+
+    // get resolution
+    if (!nh.getParam("motion_planning/resolution", resolution)) {
+        ROS_WARN("Failed to get resolution, using default value 0.05");
+        resolution = 0.05; // 默认半径0.5米
+    }
+
+    // get world_x_min
+    if (!nh.getParam("motion_planning/world_x_min", world_x_min)) {
+        ROS_WARN("Failed to get world_x_min, using default value -6.0");
+        world_x_min = -6.0; // 默认半径0.5米
+    }
+
+    // get world_y_min
+    if (!nh.getParam("motion_planning/world_y_min", world_y_min)) {
+        ROS_WARN("Failed to get world_y_min, using default value -5.0");
+        world_y_min = -5.0; // 默认半径0.5米
+    }
+
 
     // 订阅膨胀地图
     map_sub = nh.subscribe("double_inflated_map", 1, &Gen_Starts_Goals::mapCallback, this);
@@ -135,7 +183,7 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
     std::uniform_int_distribution<> dis_x(radius_in_cells, width - radius_in_cells - 1);
     std::uniform_int_distribution<> dis_y(radius_in_cells, height - radius_in_cells - 1);
     int attempts = 0;
-    int max_attempts = 10000000;
+    int max_attempts = 1000000;
     start_positions.clear();
     goal_positions.clear();
 
@@ -148,6 +196,7 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
         while (!valid_start) {
             start_x = dis_x(gen);
             start_y = dis_y(gen);
+
 
             if (isValidPosition(start_x, start_y) &&
                  !isCollisionWithOtherRobots(start_x, start_y, true)&&
@@ -182,8 +231,10 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
         }
     }
 
-    end_time_gene_s_and_goal = std::chrono::high_resolution_clock::now();
 
+    outputStartAndGoalPositions();
+
+    end_time_gene_s_and_goal = std::chrono::high_resolution_clock::now();
 
     elapsed_time_gene_s_and_goal = end_time_gene_s_and_goal - start_time_gene_s_and_goal;
     ROS_INFO("Execution time: %.6f seconds for generating starts and goals.", elapsed_time_gene_s_and_goal.count());
@@ -200,11 +251,12 @@ void Gen_Starts_Goals::generateStartAndGoalPositions() {
 //     return false;
 // }
 
-bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartPositions) {
+bool Gen_Starts_Goals::isCollisionWithOtherRobots(int x, int y, bool checkStartPositions)
+{
     const auto& positions_to_check = checkStartPositions ? start_positions : goal_positions;
 
     for (const auto& pos : positions_to_check) {
-        if (std::hypot(x - pos.first, y - pos.second)  < 6 * radius_in_cells) {
+        if (std::hypot(x - pos.first, y - pos.second)  < 5 * radius_in_cells) {
             return true;
         }
     }
@@ -226,14 +278,92 @@ bool Gen_Starts_Goals::isValidPosition(int x, int y) {
     return true;
 }
 
-void Gen_Starts_Goals::outputStartAndGoalPositions() {
-    ROS_INFO("Final start and goal positions for robots:");
 
-    for (int i = 0; i < robot_count; ++i) {
-        ROS_INFO("Robot %d: Start (%d, %d), Goal (%d, %d)", i + 1,
-                 start_positions[i].first, start_positions[i].second,
-                 goal_positions[i].first, goal_positions[i].second);
+
+void Gen_Starts_Goals::generateYamlFile(const std::string& yaml_filename, const std::string& obstacle_file) {
+    // Step 1: Read obstacles from file
+    std::ifstream infile(obstacle_file);
+    if (!infile) {
+        std::cerr << "无法打开障碍物文件：" << obstacle_file << std::endl;
+        return;
     }
+
+    std::vector<std::pair<double, double>> obstacles;
+    double x, y;
+    while (infile >> x >> y) {
+        obstacles.push_back({x, y});
+    }
+    infile.close();
+
+    // Step 2: Prepare the YAML file content
+    YAML::Emitter out;
+    out << YAML::BeginMap;
+
+    std ::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(-M_PI, M_PI);
+    // Step 3: Write agents info
+    out << YAML::Key << "agents" << YAML::Value << YAML::BeginSeq;
+    for (size_t i = 0; i < start_positions.size(); ++i) {
+        double angle = dis(gen);
+        double angle2 = dis(gen);
+        out << YAML::BeginMap;
+        out << YAML::Key << "start" << YAML::Value << YAML::Flow << YAML::BeginSeq << round(start_positions[i].first * resolution * 1000)/1000 << round(start_positions[i].second * resolution *1000) /1000 << angle << YAML::EndSeq;
+        out << YAML::Key << "name" << YAML::Value << "agent" + std::to_string(i);
+        out << YAML::Key << "goal" << YAML::Value << YAML::Flow << YAML::BeginSeq << round(goal_positions[i].first * resolution * 1000)/1000 << round(goal_positions[i].second * resolution*1000)/1000 << angle2 << YAML::EndSeq;
+        out << YAML::EndMap;
+    }
+    out << YAML::EndSeq;
+
+    // Step 4: Write map info
+    out << YAML::Key << "map" << YAML::Value << YAML::BeginMap;
+    out << YAML::Key << "dimensions" << YAML::Value << YAML::Flow << YAML::BeginSeq << -2 * world_x_min << -2* world_y_min << YAML::EndSeq;
+    out << YAML::Key << "obstacles" << YAML::Value << YAML::BeginSeq;
+    for (const auto& obstacle : obstacles) {
+        out << YAML::Flow << YAML::BeginSeq << obstacle.first << obstacle.second << YAML::EndSeq;
+    }
+    out << YAML::EndSeq;
+    out << YAML::EndMap;
+
+    out << YAML::EndMap;
+
+    // Step 5: Save YAML content to file
+    std::ofstream fout(yaml_filename);
+    if (!fout) {
+        std::cerr << "无法创建yaml文件：" << yaml_filename << std::endl;
+        return;
+    }
+    fout << out.c_str();
+    fout.close();
+    std::cout << yaml_filename << " has been saved." << std::endl;
+}
+
+
+
+
+void Gen_Starts_Goals::outputStartAndGoalPositions() {
+    std::vector<std::pair<double, double>> start_positions_d;
+    std::vector<std::pair<double, double>> goal_positions_d;
+    start_positions_d.reserve(robot_count);
+    goal_positions_d.reserve(robot_count);
+    for (int i = 0; i < robot_count; ++i)
+    {
+
+        // ROS_INFO("Robot %d: Start (%f, %f), Goal (%f, %f)", i + 1,
+        //          start_positions[i].first * resolution , start_positions[i].second * resolution,
+        //          goal_positions[i].first *resolution, goal_positions[i].second * resolution);
+
+        start_positions_d.push_back({start_positions[i].first * resolution + world_x_min , start_positions[i].second * resolution + world_y_min});
+        goal_positions_d.push_back({goal_positions[i].first * resolution + world_x_min, goal_positions[i].second * resolution + world_y_min});
+    }
+
+    savePositions(start_positions_d, goal_positions_d, "/home/zt/文档/start_and_goal_positions.txt");
+    std::cout<< "start_and_goal_positions.txt has been saved." << std::endl;
+
+
+    // 调用生成 yaml 文件的函数
+    generateYamlFile("/home/zt/CL-CBS/CL-CBS/benchmark/comparison/map20by20_obst10_agents10.yaml", "/home/zt/multi-robot-planner/src/multi-robot-planner/mapfile/obstacle_centers.txt");
+
 }
 
 const std::vector<std::pair<int, int>>& Gen_Starts_Goals::getStartPositions() const {
@@ -243,3 +373,8 @@ const std::vector<std::pair<int, int>>& Gen_Starts_Goals::getStartPositions() co
 const std::vector<std::pair<int, int>>& Gen_Starts_Goals::getGoalPositions() const {
     return goal_positions;
 }
+
+
+
+
+

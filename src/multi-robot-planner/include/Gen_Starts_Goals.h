@@ -23,6 +23,8 @@ private:
     double robot_radius;
     int width, height;
     double resolution;
+    double world_x_min;
+    double world_y_min;
     int radius_in_cells;
     bool map_received;
 
@@ -34,6 +36,8 @@ private:
     bool isValidPosition(int x, int y);
     void outputStartAndGoalPositions();
     bool checkStartsandGoals();
+    void generateYamlFile(const std::string& yaml_filename, const std::string& obstacle_file);
+
 };
 
 #endif // GEN_STARTS_GOALS_H

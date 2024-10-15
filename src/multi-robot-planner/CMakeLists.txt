@@ -26,15 +26,23 @@ include_directories(${PCL_INCLUDE_DIRS})
 include(./FindGUROBI.cmake)
 include_directories(${GUROBI_INCLUDE_DIRS})
 
-
+#Eigen
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-
+# include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
+# octomap
+find_package(octomap REQUIRED)
+include_directories(${OCTOMAP_INCLUDE_DIRS})
 
+# catkin
 include_directories( ${catkin_INCLUDE_DIRS})
+
+# yaml-cpp
+find_package(yaml-cpp REQUIRED)
+include_directories(${YAML_CPP_INCLUDE_DIR})
 
 
 # matplotlib.h
@@ -49,7 +57,7 @@ include_directories(${PYTHON2.7_INLCUDE_DIRS} ${matplot_DIRS})
 
 add_executable(map_comparison src/map_comparison.cpp)
 target_link_libraries(map_comparison   ${catkin_LIBRARIES}
-${PCL_LIBRARIES})
+${PCL_LIBRARIES} octomap)
 
 
 add_executable(Map_Inflation src/Map_Inflation.cpp)
@@ -65,13 +73,7 @@ src/Gen_Starts_Goals.cpp
 src/Beziercurve.cpp 
 src/MultiTra_Planner.cpp)
 target_include_directories(Motion_Planner PRIVATE ${PYTHON2_INCLUDE_DIRS})
-target_link_libraries(Motion_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES})
+target_link_libraries(Motion_Planner ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} ${EIGEN3_LIBRARIES} ${PYTHON_LIBRARIES} yaml-cpp)
 
 
-
-
-
-# # 添加相关库文件链接到工程
-# target_include_directories(my_cmake_exe PRIVATE ${PYTHON2_INCLUDE_DIRS})
-# target_link_libraries(my_cmake_exe ${PYTHON_LIBRARIES} ${catkin_LIBRARIES} ${GUROBI_LIBRARIES} pthread)
 

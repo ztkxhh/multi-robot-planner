@@ -64,6 +64,7 @@ void Path_Planner::doubleMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &ms
     double_map_received_ = true;
 }
 
+
 bool Path_Planner::planPaths()
 {
     bool flag = true;
@@ -955,7 +956,7 @@ int Path_Planner::MultiRobotTraGen(
                             int var_q = base_idx + q * 2 + dim; // 变量 q 的索引
 
                             // obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q];
-                            // obj += w_1 * MQM_length(p, q) * vars[var_p] * vars[var_q];
+                            // obj += w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
 
                             obj += w_1 * MQM_jerk(p, q) * vars[var_p] * vars[var_q] + w_2 * MQM_length(p, q) * vars[var_p] * vars[var_q];
                         }
@@ -1001,8 +1002,8 @@ int Path_Planner::MultiRobotTraGen(
                 offset += segments_nums[j] * n_poly * 2; // 计算偏移量
             }
 
-            for (int seg = 0; seg < segments_nums[i] - 1; seg++)
-            {                                                        // 遍历每个段
+            for (int seg = 0; seg < segments_nums[i] - 1; seg++) // 遍历每个段
+            {
                 int base_idx_current = offset + seg * n_poly * 2;    // 当前段的起始索引
                 int base_idx_next = offset + (seg + 1) * n_poly * 2; // 下一段的起始索引
 
@@ -1096,7 +1097,7 @@ int Path_Planner::MultiRobotTraGen(
                     all_control_points[i][seg].resize(n_poly);
                     for (int p = 0; p < n_poly; p++)
                     {
-                        // 上述一直在用的是栅格坐标，这里要转换成实际的坐标
+                        // 上述一直在用的是栅格坐标，这里要转换成实际的坐标,由于原点设置为（0，0），所以不需要加上地图的原点坐标
                         all_control_points[i][seg][p].first = vars[offset + seg * n_poly * 2 + p * 2].get(GRB_DoubleAttr_X) * map_data_.info.resolution;
                         all_control_points[i][seg][p].second = vars[offset + seg * n_poly * 2 + p * 2 + 1].get(GRB_DoubleAttr_X) * map_data_.info.resolution;
                         // std::cout << "Robot " << i << ", Segment " << seg << ", Control Point " << p << ": (" << all_control_points[i][seg][p].first << ", " << all_control_points[i][seg][p].second << ")" << std::endl;
@@ -1112,7 +1113,6 @@ int Path_Planner::MultiRobotTraGen(
     {
         std::cerr << e.what() << '\n';
         return -1; // 失败
-
     }
 
 }
@@ -1246,7 +1246,7 @@ void Path_Planner::Mergecurve()
             }
 
 
-            total -= seg_num - 1;
+            // total -= seg_num - 1;
 
             merged_curves[i] = std::make_shared<Beziercurve>(total);
 
@@ -1347,24 +1347,24 @@ void Path_Planner::plotting()
 
 
 
-    // _v_s
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i);
-        // 获取曲线的所有点
-        const auto &v_s = merged_curves[i]->_v_s;
-        // 提取起点和终点
-        const auto &start = v_s.front();
-        const auto &end = v_s.back();
-        // 绘制曲线
-        plt::plot(v_s);
-        // 标记起点和终点
-        plt::plot({0}, {start}, "r*"); // 红色星表示起点
-        plt::plot({v_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
-        plt::title("Robot " + std::to_string(i + 1) + " v_s");
-        plt::xlabel("x");
-        plt::ylabel("y");
-    }
+    // // _v_s
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i);
+    //     // 获取曲线的所有点
+    //     const auto &v_s = merged_curves[i]->_v_s;
+    //     // 提取起点和终点
+    //     const auto &start = v_s.front();
+    //     const auto &end = v_s.back();
+    //     // 绘制曲线
+    //     plt::plot(v_s);
+    //     // 标记起点和终点
+    //     plt::plot({0}, {start}, "r*"); // 红色星表示起点
+    //     plt::plot({v_s.size() - 1}, {end}, "k*"); // 黑色星表示终点
+    //     plt::title("Robot " + std::to_string(i + 1) + " v_s");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
 
 
 
@@ -1478,75 +1478,75 @@ void Path_Planner::plotting()
     // }
 
 
-    for (size_t i = 0; i < merged_curves.size(); ++i)
-    {
-        plt::figure(i+2*merged_curves.size());
-        // 获取曲线的所有点
-        const auto &c1 = merged_curves[i]->_duration;
-        // 绘制曲线
-        plt::plot(c1);
-        plt::title("Robot " + std::to_string(i + 1) + " duration");
-        plt::xlabel("x");
-        plt::ylabel("y");
-    }
+    // for (size_t i = 0; i < merged_curves.size(); ++i)
+    // {
+    //     plt::figure(i+2*merged_curves.size());
+    //     // 获取曲线的所有点
+    //     const auto &c1 = merged_curves[i]->_duration;
+    //     // 绘制曲线
+    //     plt::plot(c1);
+    //     plt::title("Robot " + std::to_string(i + 1) + " duration");
+    //     plt::xlabel("x");
+    //     plt::ylabel("y");
+    // }
 
 
 
-    int vis_hz = 50;
-    double vis_dt = 1.0 / vis_hz;
+    // int vis_hz = 50;
+    // double vis_dt = 1.0 / vis_hz;
 
-    int num_robots = merged_curves.size();
+    // int num_robots = merged_curves.size();
 
-    for (int i = 0; i<num_robots; ++i)
-    {
-        std::vector<double> sp_vt;
-        double max_dur_i = merged_curves[i]->_duration.back();
+    // for (int i = 0; i<num_robots; ++i)
+    // {
+    //     std::vector<double> sp_vt;
+    //     double max_dur_i = merged_curves[i]->_duration.back();
 
-        for (double t = 0.0; t < max_dur_i; t += vis_dt)
-        {
-            auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
-            int idx = std::distance(merged_curves[i]->_duration.begin(), it);
-            double dif = t - merged_curves[i]->_duration[idx - 1];
-            if (dif < 1e-6)
-            {
-                sp_vt.push_back( merged_curves[i]->DYM.v_t[idx - 1]);
-            }
-            else
-            {
-                sp_vt.push_back(0.5 *( merged_curves[i]->DYM.v_t[idx - 1] + merged_curves[i]->DYM.v_t[idx] ));
-            }
-        }
-        sp_vt.push_back( merged_curves[i]->DYM.v_t.back());
-        plt::figure(i + 3 * merged_curves.size());
-        plt::plot(sp_vt);
-        plt::title("Robot " + std::to_string(i + 1) + " sp_vt");
+    //     for (double t = 0.0; t < max_dur_i; t += vis_dt)
+    //     {
+    //         auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
+    //         int idx = std::distance(merged_curves[i]->_duration.begin(), it);
+    //         double dif = t - merged_curves[i]->_duration[idx - 1];
+    //         if (dif < 1e-6)
+    //         {
+    //             sp_vt.push_back( merged_curves[i]->DYM.v_t[idx - 1]);
+    //         }
+    //         else
+    //         {
+    //             sp_vt.push_back(0.5 *( merged_curves[i]->DYM.v_t[idx - 1] + merged_curves[i]->DYM.v_t[idx] ));
+    //         }
+    //     }
+    //     sp_vt.push_back( merged_curves[i]->DYM.v_t.back());
+    //     plt::figure(i + 3 * merged_curves.size());
+    //     plt::plot(sp_vt);
+    //     plt::title("Robot " + std::to_string(i + 1) + " sp_vt");
 
 
 
-        std::vector<double> sp_duration;
-        for (double t = 0.0; t < max_dur_i; t += vis_dt)
-        {
-            auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
-            int idx = std::distance(merged_curves[i]->_duration.begin(), it);
-            double dif = t - merged_curves[i]->_duration[idx - 1];
-            if (dif < 1e-6)
-            {
-                sp_duration.push_back( merged_curves[i]->_duration[idx - 1]);
-            }
-            else
-            {
-                sp_duration.push_back(0.5 *( merged_curves[i]->_duration[idx - 1] + merged_curves[i]->_duration[idx] ));
-            }
-        }
-        sp_duration.push_back( merged_curves[i]->_duration.back());
+    //     std::vector<double> sp_duration;
+    //     for (double t = 0.0; t < max_dur_i; t += vis_dt)
+    //     {
+    //         auto it = std::upper_bound(merged_curves[i]->_duration.begin(), merged_curves[i]->_duration.end(), t);
+    //         int idx = std::distance(merged_curves[i]->_duration.begin(), it);
+    //         double dif = t - merged_curves[i]->_duration[idx - 1];
+    //         if (dif < 1e-6)
+    //         {
+    //             sp_duration.push_back( merged_curves[i]->_duration[idx - 1]);
+    //         }
+    //         else
+    //         {
+    //             sp_duration.push_back(0.5 *( merged_curves[i]->_duration[idx - 1] + merged_curves[i]->_duration[idx] ));
+    //         }
+    //     }
+    //     sp_duration.push_back( merged_curves[i]->_duration.back());
 
-        plt::figure(i + 4 * merged_curves.size());
-        plt::plot(sp_duration);
-        plt::title("Robot " + std::to_string(i + 1) + " sp_duration");
+    //     plt::figure(i + 4 * merged_curves.size());
+    //     plt::plot(sp_duration);
+    //     plt::title("Robot " + std::to_string(i + 1) + " sp_duration");
 
-    }
+    // }
 
-    plt::show();
+    // plt::show();
 
 
     // for (size_t i = 0; i < merged_curves.size(); i++)

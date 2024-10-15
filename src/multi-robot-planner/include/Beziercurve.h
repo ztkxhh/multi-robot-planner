@@ -43,10 +43,10 @@ private:
     std::pair<double, double> thir_s(double &s);
 
 public:
-    
+
     int ds; // Based on given total on launch file
 
-    int _total;
+    int _total; // total segments on curve
     double _T_s; // 1 / frenquence
 
     // parameters for TOTP

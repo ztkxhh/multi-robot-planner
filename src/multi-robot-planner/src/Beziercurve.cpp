@@ -39,22 +39,22 @@ static vector<double> Binomial(const int &n)
 
 Beziercurve::Beziercurve(const int &total)
 {
-    this->_total = total;                          // total points on curve
-    this->_points.reserve(total + 1);              // points on curve from p_0 to p_N
-    this->_v_s.reserve(total + 1);                 // velocity
-    this->_w_s.reserve(total + 1);                 // angular velocity
+    this->_total = total;                                         // total segments on curve
+    this->_points.reserve(total + 1);               // points on curve from p_0 to p_N
+    this->_v_s.reserve(total + 1);                     // velocity
+    this->_w_s.reserve(total + 1);                   // angular velocity
     this->_a_ws.reserve(total + 1);                // angular acceleration
-    this->_a_ts.reserve(total + 1);                // tangential acceleration
-    this->_a_rs.reserve(total + 1);                // curvature
-    this->_K_s.reserve(total + 1);                 // accumulated arc_length for segement
-    this->_theta.reserve(total + 1);               // angle at each point
+    this->_a_ts.reserve(total + 1);                  // tangential acceleration
+    this->_a_rs.reserve(total + 1);                 // curvature
+    this->_K_s.reserve(total + 1);                  // accumulated arc_length for segement
+    this->_theta.reserve(total + 1);              // angle at each point
 
     this->_x_fir.reserve(total + 1);
     this->_y_fir.reserve(total + 1);
 
 
-    this->_a_i.resize(total + 1); // a_i
-    this->_b_i.resize(total);     // b_i
+    this->_a_i.resize(total + 1);     // a_i
+    this->_b_i.resize(total);           // b_i
 
     // this->_duration.resize(total + 1); // duration until i-th segement
     // this->_duration.resize(total); // duration until i-th segement
@@ -241,6 +241,7 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
     this->DYM.ar_t.resize(this->_total + 1);
 
 
+
     /*
     Calculate variables for optimization
     */
@@ -253,22 +254,25 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         // double c = b - lim.cem;
         // double ce = a * sqrt(b * b - c * c); // chord error
         // double vc = std::min(lim.v_max, ce);
-        double vc = lim.v_max;
-        double vci = vc * vc / (this->_v_s[i] * this->_v_s[i]);
+        double vci = lim.v_max * lim.v_max / (this->_v_s[i] * this->_v_s[i]);
         // w_con
         double wci = lim.w_max * lim.w_max / (this->_w_s[i] * this->_w_s[i]);
         // ar_con
-        double arci = fabs(lim.ar_max / this->_a_rs[i]);
+        // double arci = fabs(lim.ar_max / this->_a_rs[i]);
+        // double d = std::min(std::min(vci, wci), arci);
+        double d = std::min(vci, wci);
 
-        double d = std::min(std::min(vci, wci), arci);
+        if ( ! std::isfinite(d))
+        {
+            ROS_WARN("Infinite c_1 detected, cannot compute c_1");
+        }
 
         this->Vars.c_1[i] = d;
+
     }
 
     // Calculate c_2, c_3, c_4, c_5  //
-    double h = 1.0 / this->_total;
-
-
+    double h;
     int p_n;
     nh.param("points_num", p_n, 100);
     h =1.0 / p_n;
@@ -284,16 +288,36 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
             n_t = 1.0;
         }
 
-        double b = this->_v_s[i] + 2 * h * this->_a_ts[i] * n_t;
-        double c = this->_v_s[i] - 2 * h * this->_a_ts[i] * (1 - n_t);
+        double b = this->_v_s[i] + 2.0 * h * this->_a_ts[i] * n_t;
+        double c = this->_v_s[i] - 2.0 * h * this->_a_ts[i] * (1.0 - n_t);
 
         // c_2, c_3
         this->Vars.c_2[i] = b / c;
         this->Vars.c_3[i] = fabs(2.0 * h * lim.at_max / c);
 
+        if (! std::isfinite(this->Vars.c_2[i]))
+        {
+            ROS_WARN("Infinite c_2 detected, cannot compute c_2");
+        }
+
+        if (! std::isfinite(this->Vars.c_3[i]))
+        {
+            ROS_WARN("Infinite c_3 detected, cannot compute c_3");
+        }
+
         // c_4, c_5
         this->Vars.c_4[i] = c / b;
         this->Vars.c_5[i] = fabs(2.0 * h * lim.at_max / b);
+
+        if (! std::isfinite(this->Vars.c_4[i]))
+        {
+            ROS_WARN("Infinite c_4 detected, cannot compute c_4");
+        }
+
+        if (! std::isfinite(this->Vars.c_5[i]))
+        {
+            ROS_WARN("Infinite c_5 detected, cannot compute c_5");
+        }
 
         // n_i for c_6, c_7 and c_8, c_9
         a = this->_w_s[i] * this->_a_ws[i];
@@ -303,16 +327,18 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
             n_w = 1.0;
         }
 
-        double d = this->_w_s[i] + 2 * h * this->_a_ws[i] * n_w;
-        double e = this->_w_s[i] - 2 * h * this->_a_ws[i] * (1 - n_w);
+        double d = this->_w_s[i] + 2.0 * h * this->_a_ws[i] * n_w;
+        double e = this->_w_s[i] - 2.0 * h * this->_a_ws[i] * (1.0 - n_w);
 
         // c_6, c_7
         this->Vars.c_6[i] = d / e;
         this->Vars.c_7[i] = fabs(2.0 * h * lim.aw_max / e);
 
+
         // c_8, c_9
         this->Vars.c_8[i] = e / d;
         this->Vars.c_9[i] = fabs(2.0 * h * lim.aw_max / d);
+
     }
 
     // c_10 ~ c_15
@@ -335,9 +361,23 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         this->Vars.c_11[i] = -2.0 * h * this->_a_ts[i+1] *  n_tp1 - this->_v_s[i+1];
         this->Vars.c_12[i] = 2.0 * h *  this->_a_ts[i] * (1-n_t) -  this->_v_s[i];
 
+        if (! std::isfinite(this->Vars.c_10[i]))
+        {
+            ROS_WARN("Infinite c_10 detected, cannot compute c_10");
+        }
 
-        double c = this->_v_s[i] * this->_a_ts[i];
-        double cp1 = this->_v_s[i+1] * this->_a_ts[i+1];
+        if (! std::isfinite(this->Vars.c_11[i]))
+        {
+            ROS_WARN("Infinite c_11 detected, cannot compute c_11");
+        }
+
+        if (! std::isfinite(this->Vars.c_12[i]))
+        {
+            ROS_WARN("Infinite c_12 detected, cannot compute c_12");
+        }
+
+        double c = this->_w_s[i] * this->_a_ws[i];
+        double cp1 = this->_w_s[i+1] * this->_a_ws[i+1];
         double n_w = 0.0;
         double n_wp1 = 0.0;
         if (c >= 0)
@@ -352,6 +392,22 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         this->Vars.c_13[i] = 2.0 * h * this->_a_ws[i] * n_w + this->_w_s[i] - 2.0 * h * this->_a_ws[i+1] * (1-n_wp1) + this->_w_s[i+1];
         this->Vars.c_14[i] = -2.0 * h * this->_a_ws[i+1] * n_wp1 - this->_w_s[i+1];
         this->Vars.c_15[i] = 2.0 * h * this->_a_ws[i] * (1-n_w) - this->_w_s[i];
+    
+        if (! std::isfinite(this->Vars.c_13[i]))
+        {
+            ROS_WARN("Infinite c_13 detected, cannot compute c_13");
+        }
+
+        if (! std::isfinite(this->Vars.c_14[i]))
+        {
+            ROS_WARN("Infinite c_14 detected, cannot compute c_14");
+        }
+
+        if (! std::isfinite(this->Vars.c_15[i]))
+        {
+            ROS_WARN("Infinite c_15 detected, cannot compute c_15");
+        }
+
     }
 
     this->Vars = this->Vars;
@@ -376,8 +432,8 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         model.getEnv().set(GRB_IntParam_Threads, 10);
 
         int N = 2 * this->_total + 1;
-        // Number of varibles [0]-[this->_total]是 a_i
-        // [this->_total+1]-[2*this->_total]是 b_i
+        // Number of varibles [0]-[this->_total] is a_i
+        // [this->_total+1]-[2*this->_total] is b_i
 
         // 创建变量
         std::vector<GRBVar> vars(N);
@@ -422,19 +478,21 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
             model.addConstr(vars[i + 1] <= this->Vars.c_4[i] * vars[i] + this->Vars.c_5[i]);
 
             /*a_w*/
-            // Add constraints a_i < c_6 * a_{i+1} + c_7 for i = 0,...,this->_total-1
-            model.addConstr(vars[i] <= this->Vars.c_6[i] * vars[i + 1] + this->Vars.c_7[i]);
+            if (std::isfinite(this->Vars.c_6[i]) && std::isfinite(this->Vars.c_7[i]))
+            {
+                // Add constraints a_i < c_6 * a_{i+1} + c_7 for i = 0,...,this->_total-1
+                model.addConstr(vars[i] <= this->Vars.c_6[i] * vars[i + 1] + this->Vars.c_7[i]);
+            }
 
-            // Add constraints a_{i+1} < c_8 * a_{i} + c_9 for i = 0,...,this->_total-1
-            model.addConstr(vars[i + 1] <= this->Vars.c_8[i] * vars[i] + this->Vars.c_9[i]);
-
+            if (std::isfinite(this->Vars.c_8[i]) && std::isfinite(this->Vars.c_9[i]))
+            {
+                // Add constraints a_{i+1} < c_8 * a_{i} + c_9 for i = 0,...,this->_total-1
+                model.addConstr(vars[i + 1] <= this->Vars.c_8[i] * vars[i] + this->Vars.c_9[i]);
+            }
 
             // Add constraints b_i = (a_{i+1}-a_i)/(2*h)
-            model.addConstr(vars[this->_total + 1 + i] == (vars[i + 1] - vars[i]) / (2.0 / this->_total));
+            model.addConstr(vars[this->_total + 1 + i] == (vars[i + 1] - vars[i]) / (2.0 * h));
 
-            // // Add constraints c_i = fabs(b_i)
-            // model.addConstr(vars[2*this->_total + 1 + i] >= vars[this->_total + 1 + i]);
-            // model.addConstr(vars[2*this->_total + 1 + i] >= -vars[this->_total + 1 + i]);
         }
 
 
@@ -458,7 +516,6 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
 
         double lim_dif;
         nh.param("/motion_planning/lim_dif", lim_dif, 0.01);
-        double h = 1.0 / this->_total;
 
         for (int i = 0; i < this->_total-2; ++i)
         {
@@ -489,15 +546,9 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         }
     }
     catch (GRBException& e) {
-        std::cout << "Error code = " << e.getErrorCode() << std::endl;
-        std::cout << e.getMessage() << std::endl;
+        std::cout << "TOTP for first optimization Error code = " << e.getErrorCode() << std::endl;
+        std::cout << "TOTP for first optimization Error is"<<  e.getMessage() << std::endl;
     }
-    catch (const std::exception &e)
-    {
-        ROS_INFO("Error: TOTP for first optimization failed");
-    }
-
-
 
 
     /*
@@ -519,16 +570,12 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         }
     }
 
-    // Calculate T_total
-    // this->_T_total[0] = 0;
-    
-    // this->_duration[0] = 0.0;
-
+    // std::cout<< "------------------"<< std::endl;
     // for (int i = 0; i < this->_total; ++i)
     // {
-    //     // this->_T_total[i + 1] = this->_T_total[i] + this->_T_i[i];
-    //     this->_duration[i+1] = this->_duration[i] + this->_T_i[i];
+    //     std::cout << "T_i[" << i << "] = " << this->_T_i[i] << std::endl;
     // }
+    // std::cout<< "------------------"<< std::endl;
 
 
     this->_duration.push_back(0.0);
@@ -538,15 +585,24 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         this->_duration.push_back( this->_duration.back() + this->_T_i[i]);
     }
 
+    // std::cout<< "------------------"<< std::endl;
+    // for (int i = 0; i < this->_duration.size(); ++i)
+    // {
+    //     std::cout << "duration[" << i << "] = " << this->_duration[i] << std::endl;
+    // }
+    // std::cout<< "------------------"<< std::endl;
 
-    // Choose the begining point of each segement
-    for (int i = 0; i < this->_total; ++i)
-    {
-        this->DYM.v_t[i] = this->_v_s[i] * sqrt(this->_a_i[i]);
-        this->DYM.w_t[i] = this->_w_s[i] * sqrt(this->_a_i[i]);
-        this->DYM.aw_t[i] = this->_a_ws[i] * this->_a_i[i] + this->_w_s[i] * this->_b_i[i];
-        this->DYM.at_t[i] = this->_a_ts[i] * this->_a_i[i] + this->_v_s[i] * this->_b_i[i];
-        this->DYM.ar_t[i] = this->_a_rs[i] * this->_a_i[i];
-    }
+
+    // // Choose the begining point of each segement
+    // for (int i = 0; i < this->_total; ++i)
+    // {
+    //     this->DYM.v_t[i] = this->_v_s[i] * sqrt(this->_a_i[i]);
+    //     this->DYM.w_t[i] = this->_w_s[i] * sqrt(this->_a_i[i]);
+    //     this->DYM.aw_t[i] = this->_a_ws[i] * this->_a_i[i] + this->_w_s[i] * this->_b_i[i];
+    //     this->DYM.at_t[i] = this->_a_ts[i] * this->_a_i[i] + this->_v_s[i] * this->_b_i[i];
+    //     this->DYM.ar_t[i] = this->_a_rs[i] * this->_a_i[i];
+    // }
+
+
 }
 

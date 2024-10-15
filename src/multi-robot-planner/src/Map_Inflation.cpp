@@ -23,7 +23,7 @@ public:
 
             // 计算膨胀半径
             inflation_radius = std::ceil(robot_radius / resolution);
-            double_inflation_radius = std::ceil(2 * robot_radius / resolution);
+            double_inflation_radius = std::ceil(1.5 * robot_radius / resolution);
             // ROS_INFO("Calculated inflation_radius: %d", inflation_radius);
             // ROS_INFO("Calculated double_inflation_radius: %d", double_inflation_radius);
 
@@ -75,8 +75,8 @@ private:
             for (int x = 0; x < width; ++x) {
                 int index = x + y * width;
                 original_map[y][x] = msg->data[index];
-                inflated_map[y][x] = original_map[y][x];
-                double_inflated_map[y][x] = original_map[y][x];
+                // inflated_map[y][x] = original_map[y][x];
+                // double_inflated_map[y][x] = original_map[y][x];
             }
         }
 
@@ -102,6 +102,7 @@ private:
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 if (original_map[y][x] > 50) {  // 假设大于50的值为障碍物
+
                     // 膨胀该障碍物 (普通膨胀)
                     for (int dy = -inflation_radius; dy <= inflation_radius; ++dy) {
                         for (int dx = -inflation_radius; dx <= inflation_radius; ++dx) {
