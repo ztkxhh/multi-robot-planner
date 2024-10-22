@@ -12,7 +12,7 @@ Authors:xxx
 * Octomap
 * Gurobi
 
-## 2. Installation instructions
+## 2. Setup and Config
 #### (1) Install ROS Melodic for Ubuntu 18.04
 Follow [ROS Installation](http://wiki.ros.org/ROS/Installation)
 
