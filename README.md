@@ -32,5 +32,17 @@ git clone https:xxxxxxxxxx
 cd ../
 catkin_make
 source ~/${YOUR_WORKSPACE_PATH}/devel/setup.bash
-
 ```
+
+## 3. Run Simulations
+xxx
+#### (1) Simulation Configuration
+
+#### (2) Running on specified environment
+
+#### (3) Running on random environment
+
+
+## 4. Acknowledgements
+Our implementation is built on top of [Multi-robot Trajectory Planner](https://github.com/LIJUNCHENG001/multi_robot_traj_planner) and [Btraj](https://github.com/HKUST-Aerial-Robotics/Btraj). We thank Juncheng Li and Fei Gao for their great work.
+
