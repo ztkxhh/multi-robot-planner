@@ -44,5 +44,5 @@ xxx
 
 
 ## 4. Acknowledgements
-Our implementation is built on top of [Multi-robot Trajectory Planner](https://github.com/LIJUNCHENG001/multi_robot_traj_planner) and [Btraj](https://github.com/HKUST-Aerial-Robotics/Btraj). We thank Juncheng Li and Fei Gao for their great work.
+Our implementation is built on top of [Multi-robot Trajectory Planner](https://github.com/LIJUNCHENG001/multi_robot_traj_planner) and [Btraj](https://github.com/HKUST-Aerial-Robotics/Btraj), we are grateful for their outstanding work.
 
