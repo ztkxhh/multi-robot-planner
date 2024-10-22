@@ -43,7 +43,9 @@ robot_radius: the robot implemented in our simulation is considered a circle on 
 
 robot_count: the number of robots in the simulation.
 
-minimum_order: the order of optimization for the spatial path, in which "3" represents jerk and "4" represents snap.
+minimum_order: the order of smoothness optimization, in which "3" represents jerk and "4" represents snap.
+
+bezier_order: the order of bezier curve.
 
 
 
