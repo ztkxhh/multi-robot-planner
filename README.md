@@ -17,7 +17,7 @@ Authors:xxx
 Follow [ROS Installation](http://wiki.ros.org/ROS/Installation)
 
 #### (2) Install Gurobi Optimization solver
-Follow [Gurobi Download and License instructions](https://www.gurobi.com/downloads/). It's noted that Gurobi needs the license to run, 
+Follow [Gurobi Download and License instructions](https://www.gurobi.com/downloads/). It's noted that Gurobi needs the license to run, you can get an academic license for free with an academic mail address. This [blog](https://blog.csdn.net/tuck_frump/article/details/130991493) guides configuring and using the Gurobi library in a Cmake project on Ubuntu.
 
 #### (3) Install dependencies
 ```
