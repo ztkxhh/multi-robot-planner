@@ -35,7 +35,7 @@ source ~/${YOUR_WORKSPACE_PATH}/devel/setup.bash
 ```
 
 ## 3. Run Simulations
-xxx
+
 #### (1) Simulation Configuration
 You can configure the simulation settings in the launch files.
 
