@@ -21,6 +21,5 @@ Follow [Gurobi Download and License instructions](https://www.gurobi.com/downloa
 
 #### (3) Install dependencies
 ```
-sudo apt-get install ros-kinetic-octomap*
-sudo apt-get install ros-kinetic-dynamic-edt-3d
-sudo apt-get install cppad
+sudo apt-get install ros-melodic-octomap*
+sudo apt-get install ros-melodic-dynamic-edt-3d
