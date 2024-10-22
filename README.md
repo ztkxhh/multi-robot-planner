@@ -39,14 +39,15 @@ xxx
 #### (1) Simulation Configuration
 You can configure the simulation settings in the launch files.
 
-robot_radius: the robot implemented in our simulation is considered a circle on the map, the size is determined by the radius.
+```
+robot_radius: the robot implemented in our simulation is considered a circle, and the size is determined by the radius.
 
 robot_count: the number of robots in the simulation.
 
 minimum_order: the order of smoothness optimization, in which "3" represents jerk and "4" represents snap.
 
-bezier_order: the order of bezier curve.
-
+bezier_order: the order of the bezier curve.
+```
 
 
 #### (2) Running on specified environment
