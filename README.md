@@ -37,6 +37,15 @@ source ~/${YOUR_WORKSPACE_PATH}/devel/setup.bash
 ## 3. Run Simulations
 xxx
 #### (1) Simulation Configuration
+You can configure the simulation settings in the launch files.
+
+robot_radius: the robot implemented in our simulation is considered a circle on the map, the size is determined by the radius.
+
+robot_count: the number of robots in the simulation.
+
+minimum_order: the order of optimization for the spatial path, in which "3" represents jerk and "4" represents snap.
+
+
 
 #### (2) Running on specified environment
 
