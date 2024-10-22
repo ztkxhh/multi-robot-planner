@@ -1,4 +1,4 @@
-# MNRMP
+# Multiple Nonholonomic Robots Motion Planning
 
 This repository contains the code for the paper:
 xxx
