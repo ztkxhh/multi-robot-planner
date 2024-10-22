@@ -31,4 +31,6 @@ cd ${YOUR_WORKSPACE_PATH}/src
 git clone https:xxxxxxxxxx
 cd ../
 catkin_make
+source ~/${YOUR_WORKSPACE_PATH}/devel/setup.bash
+
 ```
