@@ -502,14 +502,12 @@ void Beziercurve::TOTP(const Limits & lim, ros::NodeHandle &nh)
         model.addConstr(this->_w_s[0] * vars[0] == 0);
         model.addConstr(this->_a_ws[0] * vars[0] + this->_w_s[0] * vars[this->_total + 1]== 0);
         model.addConstr(this->_a_ts[0] * vars[0] + this->_v_s[0] * vars[this->_total + 1]== 0);
-        model.addConstr(this->_a_rs[0] * vars[0] == 0);
 
         // Add constraints for final states
         model.addConstr(this->_v_s[this->_total] * vars[this->_total] == 0);
         model.addConstr(this->_w_s[this->_total] * vars[this->_total] == 0);
         model.addConstr(this->_a_ws[this->_total] * vars[this->_total] + this->_w_s[this->_total] * vars[2 * this->_total]== 0);
         model.addConstr(this->_a_ts[this->_total] * vars[this->_total] + this->_v_s[this->_total] * vars[2 * this->_total]== 0);
-        model.addConstr(this->_a_rs[this->_total] * vars[this->_total] == 0);
 
 
 

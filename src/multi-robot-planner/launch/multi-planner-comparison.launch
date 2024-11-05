@@ -20,19 +20,19 @@
 
 
   <!-- Environment -->
-  <arg name="world_x_min"           default="-10.0"/>
-  <arg name="world_y_min"           default="-10.0"/>
+  <arg name="world_x_min"           default="-25.0"/>
+  <arg name="world_y_min"           default="-25.0"/>
   <arg name="world_z_min"           default="0.999"/>
-  <arg name="world_x_max"           default="10.0"/>
-  <arg name="world_y_max"           default="10.0"/>
+  <arg name="world_x_max"           default="25.0"/>
+  <arg name="world_y_max"           default="25.0"/>
   <arg name="world_z_max"           default="1.001"/>
   <!-- <arg name="world_resolution"      default="0.025"/> -->
   <arg name="world_resolution"      default="0.05"/>
 
 
   <!-- Obstacles -->
-  <arg name="world_obs_num"         default="10"/>
-  <arg name="world_r_min"           default="1.0"/>
+  <arg name="world_obs_num"         default="25"/>
+  <arg name="world_r_min"           default="1.9"/>
   <arg name="world_r_max"           default="2.0"/>
   <arg name="world_h_min"           default="1.0"/>
   <arg name="world_h_max"           default="2.5"/>
@@ -49,14 +49,14 @@
     <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
 
 
-    <arg name="robot_count" default="16"/>
+    <arg name="robot_count" default="34"/>
     <param name="robot_count" type= "int" value="$(arg robot_count)"/>
 
     <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
     <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
 
     <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
-    <arg name="w_2"  default="1.0"/>     <!-- weight of length  -->
+    <arg name="w_2"  default="2.0"/>     <!-- weight of length  -->
 
     <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
     <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
@@ -70,7 +70,7 @@
     <arg name ="awm" default = "5.0"/>
     <arg name ="arm" default = "5.0"/>
     <arg name ="cem" default = "0.01"/>
-    <arg name ="lim_dif" default = "0.2"/>
+    <arg name ="lim_dif" default = "1.0"/>
 
     <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
     <arg name = "influnce_factor" default = "1.0"/>
@@ -131,7 +131,7 @@
 
     <!-- Open Rviz to visualize-->
     <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim.rviz" /> -->
-    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim_comparison_20.rviz" />
+    <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim_comparison_20.rviz" /> -->
 
 
 </launch>

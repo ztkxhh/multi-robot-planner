@@ -126,7 +126,7 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
             double dx = a._points[i].first - b._points[j].first;
             double dy = a._points[i].second - b._points[j].second;
             double dist2 = dx * dx + dy * dy;
-            if (dist2 < threshold2) {
+            if (dist2 <= threshold2) {
                 influenceMatrix[i][j] = true;
                 influenceMatrix2[j][i] = true;
 
@@ -134,9 +134,12 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
         }
     }
 
-
+    // ROS_INFO("Influence matrix for  curve %d and curve %d computed", idxA, idxB);
     std::vector<std::vector<InfluenceInfo>> AB = seg_processing(a, b, influenceMatrix);
+    // ROS_WARN("From AB to BA");
     std::vector<std::vector<InfluenceInfo>> BA = seg_processing(b, a, influenceMatrix2);
+    // ROS_WARN("Influence matrix size: %d x %d", nA, nB);
+
 
     int sizeAB = AB.size();
     int sizeBA = BA.size();
@@ -180,16 +183,16 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
                 bool overlap = start_ab_idx_a <= end_ba_idx_a && end_ab_idx_a >= start_ba_idx_a && start_ab_idx_b <= end_ba_idx_b && end_ab_idx_b >= start_ba_idx_b;
                 if (overlap)
                 {
-                    double cof_ab = 5.0;
-                    double cof_ba = 5.0;
+                    double cof_ab = 100.0;
+                    double cof_ba = 100.0;
 
 
                     for (int m = 0; m < seg_ab_size; ++m)
                     {
                         // a_ahead_b
-                        if (a._duration[AB[i][m].indexA]<= epsilon)
+                        if (a._duration[AB[i][m].indexA] == 0.0 )
                         {
-                            // ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                            // ROS_WARN("A ahead B detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
                             continue;
                         }
                         cof_ab = std::min(cof_ab, b._duration[AB[i][m].indexB] / a._duration[AB[i][m].indexA]);
@@ -197,23 +200,35 @@ void MultiTra_Planner::processCurvePair(const Beziercurve& a, const Beziercurve&
 
                     for ( int n = 0; n < seg_ba_size; ++n)
                     {
-                        if (b._duration[BA[k][n].indexB]  <= epsilon)
+                        if (b._duration[BA[k][n].indexA]  == 0.0)
                         {
-                            // ROS_WARN("Zero duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                            // ROS_WARN("B ahead A duration detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
                             continue;
                         }
                         // b_ahead_a
                         cof_ba = std::min(cof_ba, a._duration[BA[k][n].indexB] / b._duration[BA[k][n].indexA]);
                     }
 
-                    if (cof_ab == inf || cof_ba == inf  )
-                    {
-                        ROS_WARN("Infinite influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
-                    }
-
-                    // if (cof_ab == 0 || cof_ba == 0)
+                    // if ( ! std::isfinite(cof_ab) ||  ! std::isfinite(cof_ba) )
                     // {
-                    //     ROS_WARN("Zero influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                    //     ROS_WARN("!!!!!!!!!!!!!!!! Infinite influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                    // }
+
+                    // if (cof_ab == 0 && cof_ba == 0)
+                    // {
+                    //     ROS_WARN("!!!!!!!!!!!!!!!! Zero influence pair detected between curve %d and curve %d, cannot compute influence pair", idxA, idxB );
+                    
+                    //     // // print for debug
+                    //     // std::cout<<"--------------"<<std::endl;
+                    //     // ROS_INFO("idxA: %d and %d", idxA, idxB);
+                    //     // ROS_INFO("seg_ab_type: %d", seg_ab_type);
+                    //     // ROS_INFO("a_head_b: %f", cof_ab);
+                    //     // ROS_INFO("b_ahed_a: %f", cof_ba);
+                    //     // ROS_INFO("a_b_starta: %d   and   a_b_enda: %d", start_ab_idx_a, end_ab_idx_a);
+                    //     // ROS_INFO("a_b_startb: %d   and   a_b_endb: %d", start_ab_idx_b, end_ab_idx_b);
+                    //     // ROS_INFO("b_a_startb: %d   and   b_a_endb: %d", start_ba_idx_b, end_ba_idx_b);
+                    //     // ROS_INFO("b_a_starta: %d   and   b_a_enda: %d", start_ba_idx_a, end_ba_idx_a);
+                    //     // std::cout<<"--------------"<<std::endl;
                     // }
 
                     influncepair pair;
@@ -258,6 +273,8 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
     int nB = b._points.size();
 
 
+
+
     // 收集a_ahead_b情况下所有相互影响的段及其影响类型,要求相互影响的分段中点在曲线a上是连续的
     std::vector<std::vector<InfluenceInfo>> influencePointsAB;
     influencePointsAB.reserve(nA);
@@ -274,14 +291,14 @@ std::vector<std::vector<InfluenceInfo>> MultiTra_Planner::seg_processing(const B
 
         std::vector<int> firstidxB;
 
-        int preidxB = -11;
+        int preidxB = -10;
 
         for (int j = 0; j < nB; ++j)
         {
             if (influenceMatrix[i][j])
             {
                 int dif_j = j - preidxB;
-                if (dif_j > 10)
+                if (dif_j > 9)
                 {
                     firstidxB.push_back(j);
                 }
@@ -515,7 +532,7 @@ void MultiTra_Planner::MILP_Adujust()
         // Create scaling factors for each curve
         for (int i = 0; i < num_curves; ++i)
         {
-            vars[i] = model.addVar(1.0, 10, 0.0, GRB_CONTINUOUS);
+            vars[i] = model.addVar(1.0, 20, 0.0, GRB_CONTINUOUS);
         }
         // Create binary variables for each influence pair
         for (int i = num_curves; i < num_curves + binary_num; ++i)
@@ -524,17 +541,17 @@ void MultiTra_Planner::MILP_Adujust()
         }
 
         std::vector<double> durations(num_curves);
-        std::vector<double>duration_weithts(num_curves);
-        double max_duration = 0.0;
+        // std::vector<double>duration_weithts(num_curves);
+        // double max_duration = 0.0;
         for (int i = 0; i < num_curves; ++i)
         {
             durations[i] = curves[curves_idxs[i]]->_duration.back();
-            max_duration = std::max(max_duration, durations[i]);
+            // max_duration = std::max(max_duration, durations[i]);
         }
-        for (int i = 0; i < num_curves; ++i)
-        {
-            duration_weithts[i] =  durations[i] / max_duration;
-        }
+        // for (int i = 0; i < num_curves; ++i)
+        // {
+        //     duration_weithts[i] =  durations[i] /max_duration;
+        // }
 
 
         // Set cost function
@@ -543,7 +560,9 @@ void MultiTra_Planner::MILP_Adujust()
         {
             // objective += vars[i];
             // objective += vars[i] * curves[curves_idxs[i]]->_duration.back();
-            objective += vars[i] * duration_weithts[i];
+            // objective += vars[i] * duration_weithts[i];
+            objective += vars[i] * durations[i];
+
 
         }
         model.setObjective(objective, GRB_MINIMIZE);
@@ -581,17 +600,19 @@ void MultiTra_Planner::MILP_Adujust()
                 if (a_head_b == 0.0 && b_ahed_a == 0.0)
                 {
                     ROS_WARN("Zero scaling factor detected between curve %d and curve %d, cannot compute influence pair", idx_A, idx_B );
+                    idx_binary += 1;
                     continue;
                 }
                 if (a_head_b == inf || b_ahed_a == inf)
                 {
                     ROS_WARN("Infinite scaling factor detected between curve %d and curve %d, cannot compute influence pair", idx_A, idx_B );
+                    idx_binary += 1;
                     continue;
                 }
 
 
-                model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary] - epsilon);
-                model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]) - epsilon);
+                model.addConstr(vars[idx_A_vars] <= vars[idx_B_vars] * a_head_b + M * vars[num_curves + idx_binary]);
+                model.addConstr(vars[idx_B_vars] <= vars[idx_A_vars] * b_ahed_a + M * (1 - vars[num_curves + idx_binary]));
                 idx_binary += 1;
 
             }
@@ -626,8 +647,8 @@ void MultiTra_Planner::MILP_Adujust()
 
     catch(const GRBException& e)
     {
-        std::cerr << "Error code = " << e.getErrorCode() << std::endl;
-        std::cerr << e.getMessage() << std::endl;
+        std::cerr << "MULTI-PLANNING Error code = " << e.getErrorCode() << std::endl;
+        std::cerr << "MULTI-PLANNING" << e.getMessage() << std::endl;
     }
 
 
@@ -745,7 +766,7 @@ int main(int argc, char **argv)
     ROS_INFO("Execution time: %.6f seconds for the propsed Motion Planning Method.", elapsed_time_planning.count());
 
     std::chrono::duration<double> elapsed_time = end_time - start_time_node;
-    ROS_INFO("Execution time: %.6f seconds for overall code running.", elapsed_time.count());
+    // ROS_INFO("Execution time: %.6f seconds for overall code running.", elapsed_time.count());
 
 
 
