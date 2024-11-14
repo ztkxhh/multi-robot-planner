@@ -50,7 +50,7 @@ bezier_order: the order of the bezier curve.
 ```
 
 
-#### (2) Running on specified environment
+#### (2) Running on warehouse environment
 
 #### (3) Running on random environment
 
