@@ -53,7 +53,7 @@ bezier_order: the order of the bezier curve.
 #### (2) Running on warehouse environment
 
 <p align='center'>
-<img width="35%" height="35%" src="multi-robot-planner/img/warehouse.gif"/>
+<img width="35%" height="35%" src="img/warehouse.gif"/>
 </p>
 
 #### (3) Running on random environment
