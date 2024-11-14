@@ -61,6 +61,8 @@ bezier_order: the order of the bezier curve.
 <p align='center'>
 <img width="80%" height="80%" src="img/20-20.gif"/>
 </p>
+
+
 ## 4. Acknowledgements
 Our implementation is built on top of [Multi-robot Trajectory Planner](https://github.com/LIJUNCHENG001/multi_robot_traj_planner) and [Btraj](https://github.com/HKUST-Aerial-Robotics/Btraj), we are grateful for their outstanding work.
 
