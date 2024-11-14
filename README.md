@@ -53,7 +53,7 @@ bezier_order: the order of the bezier curve.
 #### (2) Running on warehouse environment
 
 <p align='center'>
-<img width="100%" height="100%" src="img/warehouse.gif"/>
+<img width="80%" height="80%" src="img/warehouse.gif"/>
 </p>
 
 #### (3) Running on random environment
