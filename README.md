@@ -29,7 +29,7 @@ sudo apt-get install ros-melodic-dynamic-edt-3d
 After pre-setting, you can clone this repository to your catkin workspace and catkin_make. A new workspace is recommended.
 ```
 cd ${YOUR_WORKSPACE_PATH}/src
-git clone https:xxxxxxxxxx
+git clone https://github.com/ztkxhh/multi-robot-planner.git
 cd ../
 catkin_make
 source ~/${YOUR_WORKSPACE_PATH}/devel/setup.bash
