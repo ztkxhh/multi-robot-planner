@@ -56,7 +56,7 @@ roslaunch multi-robot-planner multi-planner-warehouse.launch
 ```
 
 <p align='center'>
-<img width="80%" height="80%" src="img/warehouse.gif"/>
+<img width="30%" height="30%" src="img/warehouse.gif"/>
 </p>
 
 #### (3) Running on random environment
@@ -66,7 +66,7 @@ roslaunch multi-robot-planner multi-planner-random.launch
 ```
 
 <p align='center'>
-<img width="80%" height="80%" src="img/20-20.gif"/>
+<img width="30%" height="30%" src="img/20-20.gif"/>
 </p>
 
 
