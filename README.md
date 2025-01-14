@@ -1,8 +1,7 @@
 # Multiple Nonholonomic Robots Motion Planning
 
 This repository contains the code for the paper:
-Collision-Free Motion Planning for Nonholonomic Multi-Robot Systems with Kinodynamic Constraints
-
+Spatial-Temporal Motion Planning for Multiple Nonholonomic Robots with Safety Constraints
 Authors: Tao Zhang, Yi Dong
 
 
