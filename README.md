@@ -5,7 +5,7 @@ This repository contains the code for the paper:
 
 Authors: Tao Zhang, Yi Dong
 
-**Note: The source code will be released when the review process is completed. The current version includes only compiled files, but emulation verification can still be performed by following the steps outlined below.**
+**Note: The source code will be fully released after the review process. The current version includes only compiled files, but emulation verification can still be performed by following the steps outlined below.**
 
 ## 1. Software Requirements
 * Ubuntu 18.04
