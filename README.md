@@ -9,7 +9,7 @@ Authors: Tao Zhang, Yi Dong and Xiaoming Hu
 
 
 <p align='center'>
-<img width="30%" height="30%" src="img/pic"/>
+<img width="30%" height="30%" src="img/pic.jpg"/>
 </p>
 
 ## 1. Software Requirements
