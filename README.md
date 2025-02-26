@@ -3,7 +3,7 @@
 This repository contains the code for the paper:
 **Spatial-Temporal Motion Planning for Multiple Nonholonomic Robots with Safety Constraints**
 
-Authors: Tao Zhang, Yi Dong
+Authors: Tao Zhang, Yi Dong and Xiaoming Hu
 
 **NOTE: The current version includes mainly compiled files, as the paper is currently under review. The source code will be fully released after the review process is complete. However, emulation verification can still be performed by following the steps outlined below.**
 
