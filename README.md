@@ -5,7 +5,6 @@ Spatial-Temporal Motion Planning for Multiple Nonholonomic Robots with Safety Co
 
 Authors: Tao Zhang, Yi Dong and Xiaoming Hu
 
-**NOTE: The current version includes mainly compiled files, as the paper is currently under review. The source code will be fully released after the review process is complete.**
 
 **Please click the following cover image to see our video:**
 <p align='center'>
