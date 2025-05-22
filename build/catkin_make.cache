@@ -1,2 +1,0 @@
-multi-robot-planner
--DCATKIN_DEVEL_PREFIX=/home/zt/multi-robot-planner/devel -DCMAKE_INSTALL_PREFIX=/home/zt/multi-robot-planner/install -G Unix Makefiles
