@@ -1,8 +1,0 @@
-prefix=/home/zt/multi-robot-planner/devel
-
-Name: multi-robot-planner
-Description: Description of multi-robot-planner
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
