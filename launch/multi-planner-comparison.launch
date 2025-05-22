@@ -1,0 +1,138 @@
+<!-- 
+    xxx
+
+    Usage: At terminal, run the following command:
+                   roslaunch multi-robot-planner multi-planner.launch
+
+
+    Tao Zhang
+    Tongji University
+    zttj@tongji.edu.cn
+-->
+
+
+
+<launch>
+
+
+
+
+
+
+  <!-- Environment -->
+  <arg name="world_x_min"           default="-5.0"/>
+  <arg name="world_y_min"           default="-5.0"/>
+  <arg name="world_z_min"           default="0.999"/>
+  <arg name="world_x_max"           default="5.0"/>
+  <arg name="world_y_max"           default="5.0"/>
+  <arg name="world_z_max"           default="1.001"/>
+  <!-- <arg name="world_resolution"      default="0.025"/> -->
+  <arg name="world_resolution"      default="0.05"/>
+
+
+  <!-- Obstacles -->
+  <arg name="world_obs_num"         default="5"/>
+  <arg name="world_r_min"           default="1.0"/>
+  <arg name="world_r_max"           default="2.0"/>
+  <arg name="world_h_min"           default="1.0"/>
+  <arg name="world_h_max"           default="2.5"/>
+  <arg name="world_margin"          default="0.5"/>
+
+
+
+
+
+
+
+    <!-- Parameters Setting -->
+    <arg name="robot_radius" default="0.25"/>
+    <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
+
+
+    <arg name="robot_count" default="8"/>
+    <param name="robot_count" type= "int" value="$(arg robot_count)"/>
+
+    <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
+    <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
+
+    <arg name="w_1"  default="10.0"/>     <!-- weight of jerk or snap  -->
+    <arg name="w_2"  default="10.0"/>     <!-- weight of length  -->
+
+    <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
+    <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
+    <param name="goal_inflation_radio" type= "int" value=" 2"/>
+
+
+    <!-- limits  vm, wm, atm, awm, arm, cem -->
+    <arg name ="vm" default = "1.0"/>
+    <arg name ="wm" default = "1.0"/>
+    <arg name ="atm" default = "5.0"/>
+    <arg name ="awm" default = "5.0"/>
+    <arg name ="arm" default = "5.0"/>
+    <arg name ="cem" default = "0.01"/>
+    <arg name ="lim_dif" default = "0.1"/>
+
+    <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
+    <arg name = "influnce_factor" default = "1.0"/>
+    <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
+
+
+
+
+
+    <node name="map_generation"   pkg="multi-robot-planner" type="map_comparison">
+
+        <param name="world/x_min"                value="$(arg world_x_min)" />
+        <param name="world/y_min"                value="$(arg world_y_min)" />
+        <param name="world/z_min"                value="$(arg world_z_min)" />
+        <param name="world/x_max"                value="$(arg world_x_max)" />
+        <param name="world/y_max"                value="$(arg world_y_max)" />
+        <param name="world/z_max"                value="$(arg world_z_max)" />
+        <param name="world/resolution"           value="$(arg world_resolution)" />
+        
+        <param name="world/obs_num"              value="$(arg world_obs_num)" />
+        <param name="world/r_min"                value="$(arg world_r_min)" />
+        <param name="world/r_max"                value="$(arg world_r_max)" />
+        <param name="world/h_min"                value="$(arg world_h_min)" />
+        <param name="world/h_max"                value="$(arg world_h_max)" />
+        <param name="world/margin"               value="$(arg world_margin)" />
+    </node>
+
+    <!-- get the inflated map and publish user map -->
+    <node name="map_inflator"   pkg="multi-robot-planner" type="Map_Inflation">
+    </node>
+
+
+    <!-- generate the start points and goals for robots
+    <node name="robot_path_planner"   pkg="multi-robot-planer" type="path_planner" output="screen">
+    </node> -->
+
+    <node name="motion_planning"   pkg="multi-robot-planner" type="Motion_Planner" output="screen">
+        <param name="minimum_order"  value="$(arg minimum_order)"/>
+        <param name="bezier_order"  value="$(arg bezier_order)"/>
+        <param name="w_1"  value="$(arg w_1)"/>
+        <param name="w_2"  value="$(arg w_2)"/>
+        <param name="vm"  value="$(arg vm)"/>
+        <param name="wm"  value="$(arg wm)"/>
+        <param name="atm"  value="$(arg atm)"/>
+        <param name="awm"  value="$(arg awm)"/>
+        <param name="arm"  value="$(arg arm)"/>
+        <param name="cem"  value="$(arg cem)"/>
+        <param name="lim_dif"  value="$(arg lim_dif)"/>
+        <param name="resolution"     value="$(arg world_resolution)"/>
+        <param name="world_x_min"     value="$(arg world_x_min)"/>
+        <param name="world_y_min"     value="$(arg world_y_min)"/>
+
+    </node>
+
+
+
+
+
+    <!-- Open Rviz to visualize-->
+    <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim.rviz" /> -->
+    
+    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim_comparison_20.rviz" />
+
+
+</launch>

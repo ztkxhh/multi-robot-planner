@@ -1,0 +1,89 @@
+<!-- 
+    xxx
+
+    Usage: At terminal, run the following command:
+                   roslaunch multi-robot-planner multi-planner.launch
+
+
+    Tao Zhang
+    Tongji University
+    zttj@tongji.edu.cn
+-->
+
+
+
+<launch>
+
+
+    <!-- Parameters Setting -->
+    <arg name="robot_radius" default="0.5"/>
+    <param name="robot_radius" type= "double" value="$(arg robot_radius)"/>
+
+    <param name="goal_inflation_radio" type= "int" value=" 2"/>
+
+    <arg name="robot_count" default="16"/>
+    <param name="robot_count" type= "int" value="$(arg robot_count)"/>
+
+    <arg name="minimum_order"   default="3.0"/>     <!-- 3.0: jerk    4: snap -->
+    <arg name="bezier_order"  default="5"/>     <!-- bezier curve order  -->
+
+    <arg name="w_1"  default="1.0"/>     <!-- weight of jerk or snap  -->
+    <arg name="w_2"  default="1.0"/>     <!-- weight of length  -->
+
+    <param name="points_num" type= "int" value="200"/> <!-- number of points evaluated for each segment-->
+    <param name="frequence" type= "int" value="50"/> <!-- sampling frequence-->
+
+
+    <!-- limits  vm, wm, atm, awm, arm, cem -->
+    <arg name ="vm" default = "1.0"/>
+    <arg name ="wm" default = "1.0"/>
+    <arg name ="atm" default = "5.0"/>
+    <arg name ="awm" default = "5.0"/>
+    <arg name ="arm" default = "5.0"/>
+    <arg name ="cem" default = "0.01"/>
+    <arg name ="lim_dif" default = "0.6"/>
+
+    <!-- influnce_factor : This is used for eliminating the effects of discretization when analyzing influence segments. But if the Bezier curve has enough points, it can be set as 1 -->
+    <arg name = "influnce_factor" default = "1.0"/>
+    <param name="influnce_factor" type= "double" value="$(arg influnce_factor)"/>
+
+
+
+
+    <!-- start map-server and publish user map -->
+    <arg name="map" default="sim-map.yaml" />
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find multi-robot-planner)/mapfile/$(arg map)" required="true"/>
+
+    <!-- get the inflated map and publish user map -->
+    <node name="map_inflator"   pkg="multi-robot-planner" type="Map_Inflation">
+    </node>
+
+
+    <!-- generate the start points and goals for robots
+    <node name="robot_path_planner"   pkg="multi-robot-planer" type="path_planner" output="screen">
+    </node> -->
+
+    <node name="motion_planning"   pkg="multi-robot-planner" type="Motion_Planner" required="true" output="log">
+        <param name="minimum_order"  value="$(arg minimum_order)"/>
+        <param name="bezier_order"  value="$(arg bezier_order)"/>
+        <param name="w_1"  value="$(arg w_1)"/>
+        <param name="w_2"  value="$(arg w_2)"/>
+        <param name="vm"  value="$(arg vm)"/>
+        <param name="wm"  value="$(arg wm)"/>
+        <param name="atm"  value="$(arg atm)"/>
+        <param name="awm"  value="$(arg awm)"/>
+        <param name="arm"  value="$(arg arm)"/>
+        <param name="cem"  value="$(arg cem)"/>
+        <param name="lim_dif"  value="$(arg lim_dif)"/>
+    </node>
+
+
+
+
+
+    <!-- Open Rviz to visualize-->
+    <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/sim.rviz" /> -->
+    <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find multi-robot-planner)/launch/simulation_multi.rviz" /> -->
+
+
+</launch>
